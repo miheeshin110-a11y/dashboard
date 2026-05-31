@@ -917,14 +917,22 @@ function renderStatusCat(actM, allM){
     <div class="card">
       <div class="ct">중분류별 매출 비중</div>
       ${subEnt.length===0
-        ? `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:140px;color:var(--t3)">
+        ? `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:var(--t3)">
              <div style="font-size:28px;margin-bottom:8px">📭</div>
              <div style="font-size:13px;font-weight:500;color:var(--t2)">중분류 구분 없음</div>
-             <div style="font-size:11px;color:var(--t3);margin-top:4px">${curCat}은 단일 카테고리로 운영됩니다</div>
            </div>`
-        : `<div id="cSubBarWrap" style="position:relative;width:100%;height:${subEnt.length*34+20}px">
-             <canvas id="cSubBar" role="img" aria-label="중분류별 매출 바 차트" style="width:100%;height:100%;display:block"></canvas>
-           </div>`}
+        : subEnt.map(([sub,v],i)=>{
+            const pct=totalSubSales?v/totalSubSales:0;
+            const pW=Math.max(Math.round(pct*100),1);
+            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+              <div style="width:90px;font-size:11px;font-weight:${i===0?'600':'400'};color:#111827;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</div>
+              <div style="flex:1;position:relative;height:20px;background:#EDF0F4;border-radius:4px;overflow:visible">
+                <div style="width:${pW}%;height:100%;background:${accentColor}cc;border-radius:4px;min-width:3px"></div>
+              </div>
+              <div style="font-size:11px;font-weight:700;color:#1F2937;width:40px;flex-shrink:0">${(pct*100).toFixed(1)}%</div>
+              <div style="font-size:10px;color:#6B7280;width:60px;flex-shrink:0;text-align:right">${WM(v)}</div>
+            </div>`;
+          }).join('')}
     </div>
   </div>
 
@@ -1097,59 +1105,6 @@ function renderStatusCat(actM, allM){
     // 월별 추이
     const cT=document.getElementById('cTrend');
     if(cT){charts.trend=new Chart(cT,{type:'bar',data:{labels:lbl,datasets:[{label:'매출',data:mData.map(x=>Math.round(x.sales/1e4)),backgroundColor:hexToRgba(accentColor,0.25),borderColor:accentColor,borderWidth:2,borderRadius:4}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>v+'만',font:{size:10},color:'#9CA3AF'},grid:{color:'#ECEEF2'},border:{display:false}},x:{ticks:{font:{size:11},color:'#4B5563'},grid:{display:false}}}}});}
-
-    // 중분류 Canvas 바 (있을 때만)
-    if(subEnt.length>0){
-      // subEnt 클로저 캡처 (setTimeout 실행 시 변수 변경 방지)
-      const _subEnt=[...subEnt];
-      const _totalSubSales=totalSubSales;
-      setTimeout(()=>{
-        const canvas=document.getElementById('cSubBar');
-        if(!canvas) return;
-        const wrap=document.getElementById('cSubBarWrap');
-        const ctx=canvas.getContext('2d');
-        const DPR=window.devicePixelRatio||1;
-        const CW=wrap?wrap.offsetWidth:canvas.offsetWidth;
-        const CH=wrap?wrap.offsetHeight:canvas.offsetHeight;
-        if(!CW||!CH) return;
-        canvas.width=CW*DPR; canvas.height=CH*DPR;
-        ctx.scale(DPR,DPR);
-        const rows=_subEnt.length;
-        const ROW_H=Math.max(Math.floor(CH/rows), 30);
-        const BAR_H=Math.max(ROW_H-10, 18);
-        const LPAD=100, RPAD=72, GAP=4;
-        const barW=CW-LPAD-RPAD;
-        _subEnt.forEach(([sub,v],i)=>{
-          const y=i*ROW_H+GAP;
-          const pct=_totalSubSales?v/_totalSubSales:0;
-          const filled=Math.round(pct*barW);
-          ctx.fillStyle=accentColor;
-          ctx.beginPath(); ctx.roundRect(0,y+(BAR_H-BAR_H*0.65)/2,4,BAR_H*0.65,2); ctx.fill();
-          let label=sub;
-          ctx.font=`${i===0?'600':'500'} 11px Noto Sans KR,sans-serif`;
-          ctx.textAlign='right'; ctx.textBaseline='middle';
-          const maxLW=LPAD-12;
-          while(ctx.measureText(label).width>maxLW&&label.length>2) label=label.slice(0,-1);
-          if(label!==sub) label=label.slice(0,-1)+'…';
-          ctx.fillStyle='#111827';
-          ctx.fillText(label,LPAD-8,y+BAR_H/2);
-          ctx.fillStyle='#EDF0F4';
-          ctx.beginPath(); ctx.roundRect(LPAD,y,barW,BAR_H,4); ctx.fill();
-          ctx.fillStyle=accentColor+'cc';
-          ctx.beginPath(); ctx.roundRect(LPAD,y,Math.max(filled,4),BAR_H,4); ctx.fill();
-          const lx=LPAD+Math.max(filled,4)+5;
-          const midY=y+BAR_H/2;
-          ctx.textBaseline='middle'; ctx.textAlign='left';
-          ctx.fillStyle='#1F2937';
-          ctx.font=`bold 10px Noto Sans KR,sans-serif`;
-          ctx.fillText((pct*100).toFixed(1)+'%',lx,midY);
-          ctx.font=`10px Noto Sans KR,sans-serif`;
-          ctx.fillStyle='#6B7280'; ctx.textAlign='right';
-          ctx.fillText(WM(v),CW-2,midY);
-        });
-        charts.subBar='custom';
-      }, 150);
-    }
   },80);
 }
 
