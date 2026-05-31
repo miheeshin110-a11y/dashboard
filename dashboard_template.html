@@ -916,23 +916,22 @@ function renderStatusCat(actM, allM){
     </div>
     <div class="card">
       <div class="ct">중분류별 매출 비중</div>
-      ${subEnt.length===0
-        ? `<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:var(--t3)">
-             <div style="font-size:28px;margin-bottom:8px">📭</div>
-             <div style="font-size:13px;font-weight:500;color:var(--t2)">중분류 구분 없음</div>
-           </div>`
-        : subEnt.map(([sub,v],i)=>{
-            const pct=totalSubSales?v/totalSubSales:0;
-            const pW=Math.max(Math.round(pct*100),1);
-            return `<div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
-              <div style="width:90px;font-size:11px;font-weight:${i===0?'600':'400'};color:#111827;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${sub}</div>
-              <div style="flex:1;position:relative;height:20px;background:#EDF0F4;border-radius:4px;overflow:visible">
-                <div style="width:${pW}%;height:100%;background:${accentColor}cc;border-radius:4px;min-width:3px"></div>
-              </div>
-              <div style="font-size:11px;font-weight:700;color:#1F2937;width:40px;flex-shrink:0">${(pct*100).toFixed(1)}%</div>
-              <div style="font-size:10px;color:#6B7280;width:60px;flex-shrink:0;text-align:right">${WM(v)}</div>
-            </div>`;
-          }).join('')}
+      ${(()=>{
+        if(subEnt.length===0) return '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:120px;color:var(--t3)"><div style="font-size:28px;margin-bottom:8px">📭</div><div style="font-size:13px;font-weight:500;color:var(--t2)">중분류 구분 없음</div></div>';
+        return subEnt.map(([sub,v],i)=>{
+          const pct=totalSubSales?v/totalSubSales:0;
+          const pW=Math.max(Math.round(pct*100),1);
+          const fw=i===0?'600':'400';
+          return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'
+            +'<div style="width:90px;font-size:11px;font-weight:'+fw+';color:#111827;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</div>'
+            +'<div style="flex:1;height:18px;background:#EDF0F4;border-radius:4px;overflow:hidden">'
+            +'<div style="width:'+pW+'%;height:100%;background:'+accentColor+'cc;border-radius:4px;min-width:3px"></div>'
+            +'</div>'
+            +'<div style="font-size:11px;font-weight:700;color:#1F2937;width:38px;flex-shrink:0;text-align:right">'+(pct*100).toFixed(1)+'%</div>'
+            +'<div style="font-size:10px;color:#6B7280;width:58px;flex-shrink:0;text-align:right">'+WM(v)+'</div>'
+            +'</div>';
+        }).join('');
+      })()}
     </div>
   </div>
 
