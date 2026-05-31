@@ -650,12 +650,28 @@ function renderStatusAll(actM, allM){
     </div>
   </div>
 
-  <!-- ③ 중분류별 매출 비중 — 수평 불릿 차트 (Canvas) -->
+  <!-- ③ 중분류별 매출 비중 — HTML 바 차트 -->
   <div class="card">
     <div class="ct">중분류별 매출 비중 <span class="ct-note">전체 제품 · 상위 15개</span></div>
-    <div style="position:relative;width:100%;height:340px">
-      <canvas id="cSubBullet" role="img" aria-label="중분류별 매출 불릿 차트" style="width:100%;height:100%"></canvas>
-    </div>
+    ${(()=>{
+      const top15=subEnt.slice(0,15);
+      if(!top15.length) return '<div style="text-align:center;padding:20px;color:#9CA3AF">중분류 데이터 없음</div>';
+      return top15.map(([sub,{v,cat}],i)=>{
+        const pct=totalSubSales?v/totalSubSales:0;
+        const pW=Math.max(Math.round(pct*100),1);
+        const catColor=CAT_C[cat]||'#B0BBC8';
+        const fw=i===0?'600':'400';
+        return '<div style="display:flex;align-items:center;gap:8px;margin-bottom:7px">'
+          +'<div style="width:4px;height:16px;background:'+catColor+';border-radius:2px;flex-shrink:0"></div>'
+          +'<div style="width:90px;font-size:11px;font-weight:'+fw+';color:#111827;text-align:right;flex-shrink:0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis">'+sub+'</div>'
+          +'<div style="flex:1;height:18px;background:#EDF0F4;border-radius:4px;overflow:hidden">'
+          +'<div style="width:'+pW+'%;height:100%;background:'+catColor+'dd;border-radius:4px;min-width:3px"></div>'
+          +'</div>'
+          +'<div style="font-size:11px;font-weight:700;color:#1F2937;width:38px;flex-shrink:0;text-align:right">'+(pct*100).toFixed(1)+'%</div>'
+          +'<div style="font-size:10px;color:#6B7280;width:58px;flex-shrink:0;text-align:right">'+WM(v)+'</div>'
+          +'</div>';
+      }).join('');
+    })()}
   </div>
 
   <!-- ④ 대분류별 MER 비교 테이블 -->
@@ -764,73 +780,7 @@ function renderStatusAll(actM, allM){
           }}});
     }
 
-    /* ③ 중분류 수평 바 차트 (Canvas) — 레이블 왼쪽 고정, 잘림 없음 */
-    (()=>{
-      const canvas=document.getElementById('cSubBullet');
-      if(!canvas) return;
-      const ctx=canvas.getContext('2d');
-      const DPR=window.devicePixelRatio||1;
-      const CW=canvas.offsetWidth, CH=canvas.offsetHeight;
-      canvas.width=CW*DPR; canvas.height=CH*DPR; ctx.scale(DPR,DPR);
-
-      const top15=subEnt.slice(0,15);
-      if(!top15.length){
-        ctx.fillStyle='#9CA3AF'; ctx.font='13px Noto Sans KR,sans-serif';
-        ctx.textAlign='center'; ctx.textBaseline='middle';
-        ctx.fillText('중분류 데이터 없음', CW/2, CH/2);
-        charts.subBullet='custom'; return;
-      }
-      const maxV=top15[0]?.[1].v||1;
-      const rows=top15.length;
-      const ROW_H=Math.floor(CH/rows);
-      const BAR_H=Math.max(ROW_H-8, 10);
-      const LPAD=110, RPAD=72, GAP=4;
-      const barW=CW-LPAD-RPAD;
-
-      top15.forEach(([sub,{v,cat}],i)=>{
-        const y=i*ROW_H+GAP;
-        const catColor=CAT_C[cat]||'#B0BBC8';
-        const pct=totalSubSales?v/totalSubSales:0;
-        const filled=Math.round(pct*barW);
-
-        // 대분류 색 인디케이터
-        ctx.fillStyle=catColor;
-        ctx.beginPath(); ctx.roundRect(0,y+(BAR_H-BAR_H*0.7)/2,4,BAR_H*0.7,2); ctx.fill();
-
-        // 레이블 — 넉넉한 LPAD로 절대 잘리지 않음
-        ctx.fillStyle='#111827';
-        ctx.font=`${i===0?'600':'500'} 11px Noto Sans KR,sans-serif`;
-        ctx.textAlign='right'; ctx.textBaseline='middle';
-        // 긴 이름은 줄임표 처리 (캔버스 measureText 활용)
-        let label=sub;
-        const maxLW=LPAD-12;
-        while(ctx.measureText(label).width>maxLW&&label.length>2) label=label.slice(0,-1);
-        if(label!==sub) label=label.slice(0,-1)+'…';
-        ctx.fillText(label, LPAD-8, y+BAR_H/2);
-
-        // 배경 트랙
-        ctx.fillStyle='#EDF0F4';
-        ctx.beginPath(); ctx.roundRect(LPAD,y,barW,BAR_H,4); ctx.fill();
-
-        // 채워진 바
-        ctx.fillStyle=catColor+'dd';
-        ctx.beginPath(); ctx.roundRect(LPAD,y,Math.max(filled,4),BAR_H,4); ctx.fill();
-
-        // % : 바 바로 오른쪽, 금액: 맨 끝
-        const pctX = LPAD + Math.max(filled, 4) + 5;
-        const midY = y + BAR_H/2;
-        ctx.textBaseline='middle';
-        ctx.textAlign='left';
-        ctx.fillStyle='#1F2937';
-        ctx.font=`bold 10px Noto Sans KR,sans-serif`;
-        ctx.fillText((pct*100).toFixed(1)+'%', pctX, midY);
-        ctx.font=`10px Noto Sans KR,sans-serif`;
-        ctx.fillStyle='#6B7280';
-        ctx.textAlign='right';
-        ctx.fillText(WM(v), CW-2, midY);
-      });
-      charts.subBullet='custom';
-    })();
+    /* ③ 중분류 — innerHTML에서 직접 처리 */
   }));
 }
 
