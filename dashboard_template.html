@@ -1100,15 +1100,15 @@ function renderStatusCat(actM, allM){
 
     // 중분류 Canvas 바 (있을 때만)
     if(subEnt.length>0){
-      requestAnimationFrame(()=>requestAnimationFrame(()=>{
+      setTimeout(()=>{
         const canvas=document.getElementById('cSubBar');
         if(!canvas) return;
         const wrap=document.getElementById('cSubBarWrap');
         const ctx=canvas.getContext('2d');
         const DPR=window.devicePixelRatio||1;
-        // 부모 wrap의 실제 크기 사용
         const CW=wrap?wrap.offsetWidth:canvas.offsetWidth;
         const CH=wrap?wrap.offsetHeight:canvas.offsetHeight;
+        if(!CW||!CH) return;
         canvas.width=CW*DPR; canvas.height=CH*DPR;
         ctx.scale(DPR,DPR);
         const rows=subEnt.length;
@@ -1157,7 +1157,7 @@ function renderStatusCat(actM, allM){
           ctx.fillText(WM(v), CW-2, midY);
         });
         charts.subBar='custom';
-      }));
+      }, 150);
     }
   },80);
 }
