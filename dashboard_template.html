@@ -922,8 +922,8 @@ function renderStatusCat(actM, allM){
              <div style="font-size:13px;font-weight:500;color:var(--t2)">중분류 구분 없음</div>
              <div style="font-size:11px;color:var(--t3);margin-top:4px">${curCat}은 단일 카테고리로 운영됩니다</div>
            </div>`
-        : `<div style="position:relative;width:100%;height:${subEnt.length*34+20}px">
-             <canvas id="cSubBar" role="img" aria-label="중분류별 매출 바 차트" style="width:100%;height:100%"></canvas>
+        : `<div id="cSubBarWrap" style="position:relative;width:100%;height:${subEnt.length*34+20}px">
+             <canvas id="cSubBar" role="img" aria-label="중분류별 매출 바 차트" style="width:100%;height:100%;display:block"></canvas>
            </div>`}
     </div>
   </div>
@@ -1103,10 +1103,14 @@ function renderStatusCat(actM, allM){
       requestAnimationFrame(()=>requestAnimationFrame(()=>{
         const canvas=document.getElementById('cSubBar');
         if(!canvas) return;
+        const wrap=document.getElementById('cSubBarWrap');
         const ctx=canvas.getContext('2d');
         const DPR=window.devicePixelRatio||1;
-        const CW=canvas.offsetWidth, CH=canvas.offsetHeight;
-        canvas.width=CW*DPR; canvas.height=CH*DPR; ctx.scale(DPR,DPR);
+        // 부모 wrap의 실제 크기 사용
+        const CW=wrap?wrap.offsetWidth:canvas.offsetWidth;
+        const CH=wrap?wrap.offsetHeight:canvas.offsetHeight;
+        canvas.width=CW*DPR; canvas.height=CH*DPR;
+        ctx.scale(DPR,DPR);
         const rows=subEnt.length;
         const ROW_H=Math.max(Math.floor(CH/rows), 30);
         const BAR_H=Math.max(ROW_H-10, 18);
