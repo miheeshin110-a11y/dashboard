@@ -249,9 +249,10 @@ html,body{height:100%;font-family:'Noto Sans KR',sans-serif;background:var(--bg)
 
 <script>
 const ALL_DATA = __DASHBOARD_DATA__;
-const RAW=ALL_DATA.raw, ONLINE=ALL_DATA.online, SAMPLE=ALL_DATA.sample,
-      PURCHASE=ALL_DATA.purchase, OTHER=ALL_DATA.other, CAT_TREE=ALL_DATA.cat_tree,
-      STOCK_MONTHLY=ALL_DATA.stock_monthly||{};
+const RAW=ALL_DATA.raw.map(r=>({w:r.w,media:r.m,biz:r.b,prod:r.p,sub:r.s,sales:r.v,qty:r.q||0,config:r.c,adv:r.a||0,ppl:r.l||0,cat:r.t})),
+      ONLINE=ALL_DATA.online.map(r=>({w:r.w,ch:r.h,type:r.y,prod:r.p,amt:r.v,cat:r.t})),
+      SAMPLE=ALL_DATA.sample, PURCHASE=ALL_DATA.purchase, OTHER=ALL_DATA.other,
+      CAT_TREE=ALL_DATA.cat_tree, STOCK_MONTHLY=ALL_DATA.stock_monthly||{};
 
 /* ── 상수 ── */
 const PNL_CATS  = {para:'파라다이스', acer:'아세로라'};
