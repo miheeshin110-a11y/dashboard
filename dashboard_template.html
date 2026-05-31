@@ -816,16 +816,18 @@ function renderStatusAll(actM, allM){
         ctx.fillStyle=catColor+'dd';
         ctx.beginPath(); ctx.roundRect(LPAD,y,Math.max(filled,4),BAR_H,4); ctx.fill();
 
-        // % : 바 바로 오른쪽 / 금액: 맨 끝 고정
+        // % : 바 바로 오른쪽, 금액: 맨 끝
         const pctX = LPAD + Math.max(filled, 4) + 5;
-        ctx.textAlign='left'; ctx.textBaseline='middle';
+        const midY = y + BAR_H/2;
+        ctx.textBaseline='middle';
+        ctx.textAlign='left';
         ctx.fillStyle='#1F2937';
         ctx.font=`bold 10px Noto Sans KR,sans-serif`;
-        ctx.fillText((pct*100).toFixed(1)+'%', pctX, y+BAR_H/2);
-        ctx.fillStyle='#6B7280';
+        ctx.fillText((pct*100).toFixed(1)+'%', pctX, midY);
         ctx.font=`10px Noto Sans KR,sans-serif`;
+        ctx.fillStyle='#6B7280';
         ctx.textAlign='right';
-        ctx.fillText(WM(v), CW-2, y+BAR_H/2);
+        ctx.fillText(WM(v), CW-2, midY);
       });
       charts.subBullet='custom';
     })();
@@ -920,7 +922,7 @@ function renderStatusCat(actM, allM){
              <div style="font-size:13px;font-weight:500;color:var(--t2)">중분류 구분 없음</div>
              <div style="font-size:11px;color:var(--t3);margin-top:4px">${curCat}은 단일 카테고리로 운영됩니다</div>
            </div>`
-        : `<div style="position:relative;width:100%;height:${Math.max(subEnt.length*28+16,100)}px">
+        : `<div style="position:relative;width:100%;height:${subEnt.length*34+20}px">
              <canvas id="cSubBar" role="img" aria-label="중분류별 매출 바 차트" style="width:100%;height:100%"></canvas>
            </div>`}
     </div>
@@ -1106,8 +1108,8 @@ function renderStatusCat(actM, allM){
         const CW=canvas.offsetWidth, CH=canvas.offsetHeight;
         canvas.width=CW*DPR; canvas.height=CH*DPR; ctx.scale(DPR,DPR);
         const rows=subEnt.length;
-        const ROW_H=Math.floor(CH/rows);
-        const BAR_H=Math.max(ROW_H-8,10);
+        const ROW_H=Math.max(Math.floor(CH/rows), 30);
+        const BAR_H=Math.max(ROW_H-10, 18);
         const LPAD=100, RPAD=72, GAP=4;
         const barW=CW-LPAD-RPAD;
         subEnt.forEach(([sub,v],i)=>{
@@ -1133,16 +1135,22 @@ function renderStatusCat(actM, allM){
           ctx.fillStyle=accentColor+'cc';
           ctx.beginPath(); ctx.roundRect(LPAD,y,Math.max(filled,4),BAR_H,4); ctx.fill();
           // 비중 텍스트
-          // % : 바 바로 오른쪽 / 금액: 맨 끝 고정
+          // % : 바 바로 오른쪽, 금액: 맨 끝 — BAR_H 충분하면 한 줄, 아니면 같은 줄 간격
           const lx = LPAD + Math.max(filled, 4) + 5;
-          ctx.textAlign='left'; ctx.textBaseline='middle';
+          const midY = y + BAR_H/2;
+          ctx.textBaseline='middle';
+          // % 텍스트 (바 오른쪽)
+          ctx.textAlign='left';
           ctx.fillStyle='#1F2937';
           ctx.font=`bold 10px Noto Sans KR,sans-serif`;
-          ctx.fillText((pct*100).toFixed(1)+'%',lx,y+BAR_H/2);
-          ctx.fillStyle='#6B7280';
+          ctx.fillText((pct*100).toFixed(1)+'%', lx, midY);
+          // 금액 (맨 끝) — % 텍스트 너비 계산해서 겹치지 않게
+          const pctW = ctx.measureText((pct*100).toFixed(1)+'%').width;
           ctx.font=`10px Noto Sans KR,sans-serif`;
+          ctx.fillStyle='#6B7280';
           ctx.textAlign='right';
-          ctx.fillText(WM(v),CW-2,y+BAR_H/2);
+          // 겹침 방지: 금액이 % 텍스트와 겹치면 오른쪽 끝에만
+          ctx.fillText(WM(v), CW-2, midY);
         });
         charts.subBar='custom';
       }));
