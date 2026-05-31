@@ -1100,6 +1100,9 @@ function renderStatusCat(actM, allM){
 
     // 중분류 Canvas 바 (있을 때만)
     if(subEnt.length>0){
+      // subEnt 클로저 캡처 (setTimeout 실행 시 변수 변경 방지)
+      const _subEnt=[...subEnt];
+      const _totalSubSales=totalSubSales;
       setTimeout(()=>{
         const canvas=document.getElementById('cSubBar');
         if(!canvas) return;
@@ -1111,19 +1114,17 @@ function renderStatusCat(actM, allM){
         if(!CW||!CH) return;
         canvas.width=CW*DPR; canvas.height=CH*DPR;
         ctx.scale(DPR,DPR);
-        const rows=subEnt.length;
+        const rows=_subEnt.length;
         const ROW_H=Math.max(Math.floor(CH/rows), 30);
         const BAR_H=Math.max(ROW_H-10, 18);
         const LPAD=100, RPAD=72, GAP=4;
         const barW=CW-LPAD-RPAD;
-        subEnt.forEach(([sub,v],i)=>{
+        _subEnt.forEach(([sub,v],i)=>{
           const y=i*ROW_H+GAP;
-          const pct=totalSubSales?v/totalSubSales:0;
+          const pct=_totalSubSales?v/_totalSubSales:0;
           const filled=Math.round(pct*barW);
-          // 색 인디케이터
           ctx.fillStyle=accentColor;
           ctx.beginPath(); ctx.roundRect(0,y+(BAR_H-BAR_H*0.65)/2,4,BAR_H*0.65,2); ctx.fill();
-          // 레이블
           let label=sub;
           ctx.font=`${i===0?'600':'500'} 11px Noto Sans KR,sans-serif`;
           ctx.textAlign='right'; ctx.textBaseline='middle';
@@ -1132,29 +1133,19 @@ function renderStatusCat(actM, allM){
           if(label!==sub) label=label.slice(0,-1)+'…';
           ctx.fillStyle='#111827';
           ctx.fillText(label,LPAD-8,y+BAR_H/2);
-          // 배경 트랙
           ctx.fillStyle='#EDF0F4';
           ctx.beginPath(); ctx.roundRect(LPAD,y,barW,BAR_H,4); ctx.fill();
-          // 채워진 바
           ctx.fillStyle=accentColor+'cc';
           ctx.beginPath(); ctx.roundRect(LPAD,y,Math.max(filled,4),BAR_H,4); ctx.fill();
-          // 비중 텍스트
-          // % : 바 바로 오른쪽, 금액: 맨 끝 — BAR_H 충분하면 한 줄, 아니면 같은 줄 간격
-          const lx = LPAD + Math.max(filled, 4) + 5;
-          const midY = y + BAR_H/2;
-          ctx.textBaseline='middle';
-          // % 텍스트 (바 오른쪽)
-          ctx.textAlign='left';
+          const lx=LPAD+Math.max(filled,4)+5;
+          const midY=y+BAR_H/2;
+          ctx.textBaseline='middle'; ctx.textAlign='left';
           ctx.fillStyle='#1F2937';
           ctx.font=`bold 10px Noto Sans KR,sans-serif`;
-          ctx.fillText((pct*100).toFixed(1)+'%', lx, midY);
-          // 금액 (맨 끝) — % 텍스트 너비 계산해서 겹치지 않게
-          const pctW = ctx.measureText((pct*100).toFixed(1)+'%').width;
+          ctx.fillText((pct*100).toFixed(1)+'%',lx,midY);
           ctx.font=`10px Noto Sans KR,sans-serif`;
-          ctx.fillStyle='#6B7280';
-          ctx.textAlign='right';
-          // 겹침 방지: 금액이 % 텍스트와 겹치면 오른쪽 끝에만
-          ctx.fillText(WM(v), CW-2, midY);
+          ctx.fillStyle='#6B7280'; ctx.textAlign='right';
+          ctx.fillText(WM(v),CW-2,midY);
         });
         charts.subBar='custom';
       }, 150);
