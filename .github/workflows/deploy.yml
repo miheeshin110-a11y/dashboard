@@ -3,15 +3,14 @@ name: 대시보드 배포
 on:
   push:
     paths:
-      - 'data/dashboard.json'   # JSON 업데이트 시에만 실행
-  workflow_dispatch:             # 수동 실행 버튼
+      - 'trigger.json'    # Apps Script가 이 파일만 push
+  workflow_dispatch:
 
 jobs:
   build-and-deploy:
     runs-on: ubuntu-latest
-
     steps:
-      - name: 코드 체크아웃
+      - name: 체크아웃
         uses: actions/checkout@v4
 
       - name: Python 설치
@@ -19,7 +18,7 @@ jobs:
         with:
           python-version: '3.11'
 
-      - name: 대시보드 빌드 (JSON → HTML 내장)
+      - name: 구글 시트 → 빌드
         run: python build.py
 
       - name: GitHub Pages 배포
