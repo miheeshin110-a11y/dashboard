@@ -1,0 +1,30 @@
+name: 대시보드 배포
+
+on:
+  push:
+    paths:
+      - 'data/dashboard.json'   # JSON 업데이트 시에만 실행
+  workflow_dispatch:             # 수동 실행 버튼
+
+jobs:
+  build-and-deploy:
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: 코드 체크아웃
+        uses: actions/checkout@v4
+
+      - name: Python 설치
+        uses: actions/setup-python@v5
+        with:
+          python-version: '3.11'
+
+      - name: 대시보드 빌드 (JSON → HTML 내장)
+        run: python build.py
+
+      - name: GitHub Pages 배포
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./dist
+          publish_branch: gh-pages
