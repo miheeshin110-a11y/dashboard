@@ -7,7 +7,7 @@ GitHub Actions에서 실행:
 """
 import csv, json, os, re, urllib.request, io
 
-SHEET_ID = '1Xz4t6uCRICov3UpQCdYUZQngo5O4YaOrwMMy6t7dNY4'
+SHEET_ID = '1Jfrh61zqUb5jQsh3yZiLXh4hp_vF2n9_mo6cRE5a3gc'
 SHEETS = {
     'raw':      '791828760',
     'online':   '1839246190',
