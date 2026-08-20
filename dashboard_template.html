@@ -488,7 +488,7 @@ function calcPnl(months){
   const xf=OTHER.filter(r=>r.cat===cat&&months.includes(r.w));
   const 매출=rf.reduce((a,r)=>a+r.sales,0);
   const ppl=rf.reduce((a,r)=>a+r.ppl,0);
-  const 광고방송=rf.reduce((a,r)=>a+r.adv,0);
+  const 광고방송=rf.filter(r=>r.media==='방송').reduce((a,r)=>a+r.adv,0);
   const 광고온라인=of.reduce((a,r)=>a+r.amt,0);
   const 샘플=sf.reduce((a,r)=>a+r.amt,0);
   const 기타=xf.reduce((a,r)=>a+r.amt,0);
@@ -652,7 +652,7 @@ function calcStatus(months, cat){
   const rf = src.filter(r=>months.includes(r.w));
   const sales = rf.reduce((a,r)=>a+r.sales,0);
   const ppl   = rf.reduce((a,r)=>a+r.ppl,0);
-  const adv   = rf.reduce((a,r)=>a+r.adv,0);
+  const adv   = rf.filter(r=>r.media==='방송').reduce((a,r)=>a+r.adv,0);
   // 온라인광고비 (별도 시트)
   const of = (cat==='all' ? ONLINE : ONLINE.filter(r=>r.cat===cat))
              .filter(r=>months.includes(r.w));
@@ -1015,7 +1015,7 @@ function renderStatusCat(actM, allM){
       <div class="ct">방송 광고비 거래처별 <span class="ct-note">${d.adv?WM(d.adv)+' 방송월 기준':'데이터 없음'}</span></div>
       ${(()=>{
         const advBiz={};
-        d.rf.forEach(r=>{if(r.adv) advBiz[r.biz]=(advBiz[r.biz]||0)+r.adv;});
+        d.rf.forEach(r=>{if(r.adv && r.media==='방송') advBiz[r.biz]=(advBiz[r.biz]||0)+r.adv;});
         const ent=Object.entries(advBiz).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
         const tot=ent.reduce((a,[,v])=>a+v,0);
         return ent.length
@@ -1610,9 +1610,13 @@ function calcBridge(cat){
     const rows=RAW_BY_MS[key]||[];
     const baseRows=rows.filter(r=>r.w===baseMonth);
     const prevRows=rows.filter(r=>r.w===prevMonth);
-    const Q1=baseRows.reduce((a,r)=>a+r.qty,0), sales1=baseRows.reduce((a,r)=>a+r.sales,0);
-    const Q0=prevRows.reduce((a,r)=>a+r.qty,0), sales0=prevRows.reduce((a,r)=>a+r.sales,0);
-    const P1=Q1?sales1/Q1:0, P0=Q0?sales0/Q0:0;
+    const Q1=baseRows.reduce((a,r)=>a+r.qty,0);
+    const Q0=prevRows.reduce((a,r)=>a+r.qty,0);
+    // 순수량이 0/음수로 상쇄되는 달은 매출도 0으로 처리(반품·조정 항목이 서로 다른 상품명으로
+    // 잡혀 수량은 상쇄돼도 금액이 잔여로 남는 경우가 있음 — 그 잔여 매출은 브리지 계산에서 제외).
+    const sales1=Q1>0 ? baseRows.reduce((a,r)=>a+r.sales,0) : 0;
+    const sales0=Q0>0 ? prevRows.reduce((a,r)=>a+r.sales,0) : 0;
+    const P1=Q1>0?sales1/Q1:0, P0=Q0>0?sales0/Q0:0;
     let group=null;
     if(meta.firstSaleMonth===baseMonth) group='신규';
     else if(Q0>0 && Q1>0) group='공통';
