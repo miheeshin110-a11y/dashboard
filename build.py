@@ -65,6 +65,7 @@ def build():
         if n(row[5]): r['q'] = n(row[5])
         if len(row) > 7 and n(row[7]): r['a'] = n(row[7])
         if len(row) > 8 and n(row[8]): r['l'] = n(row[8])
+        if len(row) > 9 and n(row[9]): r['g'] = n(row[9])  # 개런티(정액비) — 방송 MER 계산용
         raw.append(r)
     print(f'  RAW: {len(raw)}건')
 
