@@ -39,14 +39,12 @@ def parse_config(prod):
 def build():
     print('📥 구글 시트 CSV 다운로드 중...')
 
-    # 상품분류 맵
+    # 상품분류 맵 (대분류→중분류 트리 구조만 사용, SKU→중분류 매핑은 RAW 자체 컬럼 사용)
     cls_rows = fetch_csv(SHEETS['cls'])
-    prod_map = {}
     cat_tree = {}
     for row in cls_rows[1:]:
         if len(row) < 3 or not row[0]: continue
-        cat, sub, prod = row[0].strip(), row[1].strip(), row[2].strip()
-        prod_map[prod] = {'cat': cat, 'sub': sub}
+        cat, sub = row[0].strip(), row[1].strip()
         if cat not in cat_tree: cat_tree[cat] = []
         if sub and sub not in cat_tree[cat]: cat_tree[cat].append(sub)
 
@@ -58,9 +56,12 @@ def build():
         cat = row[11].strip() if len(row) > 11 else ''
         if not cat: continue
         prod = row[3].strip()
-        info = prod_map.get(prod, {'cat': cat, 'sub': cat})
+        # 중분류는 RAW 시트 자체 컬럼(row[12])을 그대로 사용 — ONLINE.중분류와 같은 분류체계라
+        # cls 시트(상품분류) 매핑보다 더 완전하고 정확함 (cls 매핑은 342개 실 SKU 중 256개만 커버).
+        sub = row[12].strip() if len(row) > 12 else ''
+        if not sub: sub = cat
         r = {'w': row[0].strip(), 'm': row[1].strip(), 'b': row[2].strip(),
-             'p': prod, 's': info['sub'], 'v': n(row[4]), 'c': parse_config(prod), 't': cat}
+             'p': prod, 's': sub, 'v': n(row[4]), 'c': parse_config(prod), 't': cat}
         if n(row[5]): r['q'] = n(row[5])
         if len(row) > 7 and n(row[7]): r['a'] = n(row[7])
         if len(row) > 8 and n(row[8]): r['l'] = n(row[8])
@@ -77,7 +78,8 @@ def build():
         online.append({'w': row[0].strip(), 'h': row[2].strip() if len(row) > 2 else '',
                        'y': row[3].strip() if len(row) > 3 else '',
                        'p': row[4].strip() if len(row) > 4 else '',
-                       'v': n(row[5]), 't': cat})
+                       'v': n(row[5]), 't': cat,
+                       's': row[8].strip() if len(row) > 8 else ''})
     print(f'  온라인광고비: {len(online)}건')
 
     # 샘플

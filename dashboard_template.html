@@ -228,6 +228,41 @@ html,body{height:100%;font-family:'Noto Sans KR',sans-serif;background:var(--bg)
         </div>
       </div>
     </div>
+
+    <!-- 폴더 3: 제품별 SKU진단 -->
+    <div class="sb-sec">제품별 SKU진단</div>
+    <div class="sb-grp">
+      <div class="sb-ghd open" id="grp_sku" onclick="toggleGrp('sku')">
+        <span>🔎</span><span>SKU 진단</span>
+        <span class="sb-yr">8개</span><span class="arr">▶</span>
+      </div>
+      <div class="sb-items" id="grpItems_sku">
+        <div class="sb-item" id="item_sku_all" onclick="setView('sku','all')">
+          <span class="dot" style="background:var(--t3)"></span>전체
+        </div>
+        <div class="sb-item" id="item_sku_알파cd" onclick="setView('sku','알파cd')">
+          <span class="dot" style="background:#7C3AED"></span>알파cd
+        </div>
+        <div class="sb-item" id="item_sku_파라다이스" onclick="setView('sku','파라다이스')">
+          <span class="dot" style="background:#2563EB"></span>파라다이스
+        </div>
+        <div class="sb-item" id="item_sku_프리" onclick="setView('sku','프리')">
+          <span class="dot" style="background:#0891B2"></span>프리
+        </div>
+        <div class="sb-item" id="item_sku_비어랩" onclick="setView('sku','비어랩')">
+          <span class="dot" style="background:#D97706"></span>비어랩
+        </div>
+        <div class="sb-item" id="item_sku_아세로라" onclick="setView('sku','아세로라')">
+          <span class="dot" style="background:#059669"></span>아세로라
+        </div>
+        <div class="sb-item" id="item_sku_베리" onclick="setView('sku','베리')">
+          <span class="dot" style="background:#DB2777"></span>베리
+        </div>
+        <div class="sb-item" id="item_sku_기타" onclick="setView('sku','기타')">
+          <span class="dot" style="background:#9CA3AF"></span>기타
+        </div>
+      </div>
+    </div>
   </div>
 
   <div class="sb-foot">
@@ -250,7 +285,7 @@ html,body{height:100%;font-family:'Noto Sans KR',sans-serif;background:var(--bg)
 <script>
 const ALL_DATA = __DASHBOARD_DATA__;
 const RAW=ALL_DATA.raw.map(r=>({w:r.w,media:r.m,biz:r.b,prod:r.p,sub:r.s,sales:r.v,qty:r.q||0,config:r.c,adv:r.a||0,ppl:r.l||0,cat:r.t})),
-      ONLINE=ALL_DATA.online.map(r=>({w:r.w,ch:r.h,type:r.y,prod:r.p,amt:r.v,cat:r.t})),
+      ONLINE=ALL_DATA.online.map(r=>({w:r.w,ch:r.h,type:r.y,prod:r.p,amt:r.v,cat:r.t,sub:r.s||''})),
       SAMPLE=ALL_DATA.sample, PURCHASE=ALL_DATA.purchase, OTHER=ALL_DATA.other,
       CAT_TREE=ALL_DATA.cat_tree, STOCK_MONTHLY=ALL_DATA.stock_monthly||{};
 
@@ -317,21 +352,26 @@ function updateSidebarActive(){
     const el=document.getElementById('item_'+k);
     el.className='sb-item'+(curView==='pnl'&&k===curProd?' a'+k.charAt(0):'');
   });
-  // 현황 탭
+  // 현황 탭 / SKU진단 탭 (같은 curCat 상태 공유, DOM은 분리)
   ['all','알파cd','파라다이스','프리','비어랩','아세로라','베리','기타'].forEach(k=>{
-    const el=document.getElementById('item_status_'+k);
-    if(el) el.className='sb-item'+(curView==='status'&&k===curCat?' active-cat':'');
-    if(el&&curView==='status'&&k===curCat){
-      const c=CAT_C[k]||'var(--t1)';
-      el.style.background=hexToRgba(c,0.1);
-      el.style.color=c;
-    } else if(el){
-      el.style.background='';el.style.color='';
-    }
+    ['status','sku'].forEach(v=>{
+      const el=document.getElementById('item_'+v+'_'+k);
+      if(!el) return;
+      const active=curView===v&&k===curCat;
+      el.className='sb-item'+(active?' active-cat':'');
+      if(active){
+        const c=CAT_C[k]||'var(--t1)';
+        el.style.background=hexToRgba(c,0.1);
+        el.style.color=c;
+      } else {
+        el.style.background='';el.style.color='';
+      }
+    });
   });
   // 탑바 제목
   let name='';
   if(curView==='pnl') name=PNL_INFO[curProd].label;
+  else if(curView==='sku') name=(curCat==='all'?'전체':curCat)+' SKU 진단';
   else if(curCat==='all') name='전체 현황';
   else name=curCat+' 현황';
   document.getElementById('tbName').textContent=name;
@@ -357,7 +397,23 @@ function allMonthsFor(){
 }
 function activeMonths(){ const all=allMonthsFor(); return curMonths?all.filter(m=>curMonths.includes(m)):all; }
 
+// 생애주기·브리지·SKU진단은 항상 최근 "마감월" 기준 — 진행 중인 당월은 판정 대상에서 제외
+function getBaseMonth(months){
+  if(!months.length) return null;
+  const now=new Date(), curLabel=(now.getMonth()+1)+'월';
+  const last=months.at(-1);
+  return (last===curLabel && months.length>1) ? months.at(-2) : last;
+}
+
 function buildFilter(){
+  if(curView==='sku'){
+    const ms=allMonthsFor();
+    const base=getBaseMonth(ms);
+    document.getElementById('filterWrap').innerHTML = base
+      ? `<span class="filter-label">분석 기준월</span><span class="mchip on" style="cursor:default">${base} (마감)</span>`
+      : `<span class="filter-label">데이터 없음</span>`;
+    return;
+  }
   const ms=allMonthsFor();
   let h=`<span class="filter-label">기간</span>`;
   h+=`<button class="mchip ${!curMonths?'on':''}" onclick="setMonthFilter(null)">전체</button>`;
@@ -1058,6 +1114,202 @@ function renderStatusCat(actM, allM){
   },80);
 }
 
+/* ══════════════════════════════
+   SKU 진단 (신규)
+══════════════════════════════ */
+// prod별 RAW 행 그룹 (1회 계산)
+const RAW_BY_PROD = (()=>{
+  const m={};
+  RAW.forEach(r=>{ if(!r.prod) return; (m[r.prod]=m[r.prod]||[]).push(r); });
+  return m;
+})();
+// 실제 SKU 판정: 해당 상품명 행 중 하나라도 실판매수량(qty)>0 이어야 함
+// (배송비/CS비용/수수료매출/방송 편성표 로그 등 비-SKU 항목 제외, 매출 영향 0.001% 확인됨)
+const SKU_META = (()=>{
+  const out={};
+  Object.entries(RAW_BY_PROD).forEach(([prod,rows])=>{
+    if(!rows.some(r=>r.qty>0)) return;
+    const catCnt={}, subCnt={};
+    rows.forEach(r=>{ catCnt[r.cat]=(catCnt[r.cat]||0)+1; subCnt[r.sub]=(subCnt[r.sub]||0)+1; });
+    const cat=Object.entries(catCnt).sort((a,b)=>b[1]-a[1])[0][0];
+    const sub=Object.entries(subCnt).sort((a,b)=>b[1]-a[1])[0][0];
+    out[prod]={cat, sub, config:rows[0].config||1};
+  });
+  return out;
+})();
+const SKU_LIST = Object.keys(SKU_META);
+
+let skuSort = {key:'sales', dir:'desc'};
+let skuSearch = '';
+let skuExpanded = new Set();
+
+function sparkline(vals){
+  const w=54,h=20,pad=2;
+  const max=Math.max(...vals,1), min=Math.min(...vals,0);
+  const range=(max-min)||1;
+  const step=(w-2*pad)/Math.max(vals.length-1,1);
+  const pts=vals.map((v,i)=>`${(pad+i*step).toFixed(1)},${(h-pad-((v-min)/range)*(h-2*pad)).toFixed(1)}`).join(' ');
+  const up = vals.length>1 && vals.at(-1)>=vals[0];
+  const color = up?'#2FB344':'#D63939';
+  return `<svg width="${w}" height="${h}" viewBox="0 0 ${w} ${h}" style="display:block;overflow:visible"><polyline points="${pts}" fill="none" stroke="${color}" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/></svg>`;
+}
+
+function calcSkuDiag(cat){
+  const months = allMonthsFor();
+  const baseMonth = getBaseMonth(months);
+  if(!baseMonth) return {baseMonth:null, prevMonth:null, months, rows:[]};
+  const idx = months.indexOf(baseMonth);
+  const prevMonth = idx>0 ? months[idx-1] : null;
+  const last3 = months.slice(Math.max(0,idx-2), idx+1);
+
+  const skuProds = cat==='all' ? SKU_LIST : SKU_LIST.filter(p=>SKU_META[p].cat===cat);
+
+  // 중분류별 온라인채널 매출(RAW.매체==='온라인')·광고비(ONLINE) — 기준월 기준
+  const onlineSpendBySub={}, onlineSalesBySub={};
+  ONLINE.forEach(r=>{ if(r.w===baseMonth && r.sub) onlineSpendBySub[r.sub]=(onlineSpendBySub[r.sub]||0)+r.amt; });
+  RAW.forEach(r=>{ if(r.w===baseMonth && r.media==='온라인') onlineSalesBySub[r.sub]=(onlineSalesBySub[r.sub]||0)+r.sales; });
+
+  const rows = skuProds.map(prod=>{
+    const meta=SKU_META[prod];
+    const prodRows=RAW_BY_PROD[prod]||[];
+    const baseRows=prodRows.filter(r=>r.w===baseMonth);
+    const prevRows=prevMonth?prodRows.filter(r=>r.w===prevMonth):[];
+    const sales=baseRows.reduce((a,r)=>a+r.sales,0);
+    const qty=baseRows.reduce((a,r)=>a+r.qty,0);
+    const prevSales=prevRows.reduce((a,r)=>a+r.sales,0);
+    const adv=baseRows.reduce((a,r)=>a+r.adv,0);
+    const ppl=baseRows.reduce((a,r)=>a+r.ppl,0);
+    const trend=last3.map(m=>prodRows.filter(r=>r.w===m).reduce((a,r)=>a+r.sales,0));
+    const monthSales=months.map(m=>prodRows.filter(r=>r.w===m).reduce((a,r)=>a+r.sales,0));
+    const monthQty=months.map(m=>prodRows.filter(r=>r.w===m).reduce((a,r)=>a+r.qty,0));
+    const activeMonthsCnt=monthQty.filter(q=>q>0).length;
+    let noSaleStreak=0;
+    for(let i=idx;i>=0;i--){ if(monthSales[i]<=0) noSaleStreak++; else break; }
+
+    const subSpend=onlineSpendBySub[meta.sub]||0;
+    const subSales=onlineSalesBySub[meta.sub]||0;
+    const mer = subSpend>0 ? subSales/subSpend : null;
+
+    return {prod, cat:meta.cat, sub:meta.sub, config:meta.config,
+      sales, qty, prevSales, adv, ppl, trend, activeMonthsCnt, noSaleStreak, mer};
+  });
+
+  return {baseMonth, prevMonth, months, rows};
+}
+
+function skuSortRows(rows){
+  const {key,dir}=skuSort, mul=dir==='asc'?1:-1;
+  return rows.slice().sort((a,b)=>{
+    if(key==='prod'||key==='sub') return a[key].localeCompare(b[key])*mul;
+    if(key==='mer'){
+      const av=a.mer==null?-Infinity:a.mer, bv=b.mer==null?-Infinity:b.mer;
+      return (av-bv)*mul;
+    }
+    return ((a[key]||0)-(b[key]||0))*mul;
+  });
+}
+function setSkuSort(key){
+  if(skuSort.key===key) skuSort.dir=skuSort.dir==='desc'?'asc':'desc';
+  else skuSort={key, dir:(key==='prod'||key==='sub')?'asc':'desc'};
+  renderSkuDiag();
+}
+function setSkuSearch(v){
+  skuSearch=v; renderSkuDiag();
+  requestAnimationFrame(()=>{
+    const el=document.getElementById('skuSearchInput');
+    if(el){ el.focus(); const p=el.value.length; el.setSelectionRange(p,p); }
+  });
+}
+function toggleSkuRow(prod){
+  if(skuExpanded.has(prod)) skuExpanded.delete(prod); else skuExpanded.add(prod);
+  renderSkuDiag();
+}
+
+function renderSkuDiag(){
+  const {baseMonth, rows} = calcSkuDiag(curCat);
+
+  if(!baseMonth){
+    document.getElementById('scrollArea').innerHTML=`<div class="sec-title">SKU 진단</div><div class="card" style="text-align:center;padding:40px;color:var(--t3)">데이터가 없습니다</div>`;
+    return;
+  }
+
+  const q=skuSearch.trim().toLowerCase();
+  const filtered = q ? rows.filter(r=>r.prod.toLowerCase().includes(q)) : rows;
+  const sorted = skuSortRows(filtered);
+  const totalSales = rows.reduce((a,r)=>a+r.sales,0);
+  const noAdvSubCount = new Set(rows.filter(r=>r.mer==null).map(r=>r.sub)).size;
+
+  const th = (label,key,align)=>{
+    if(!key) return `<th class="${align||''}">${label}</th>`;
+    const active=skuSort.key===key;
+    const arrow=active?(skuSort.dir==='desc'?' ▼':' ▲'):'';
+    return `<th class="${align||''}" style="cursor:pointer;user-select:none" onclick="setSkuSort('${key}')">${label}${arrow}</th>`;
+  };
+
+  const bodyRows = sorted.map(r=>{
+    const growth = growthBadge(r.sales, r.prevSales);
+    const units = r.qty*(r.config||1);
+    const asp = r.qty ? r.sales/r.qty : 0;
+    const unitPrice = units ? r.sales/units : 0;
+    const merStr = r.mer==null ? '<span style="color:var(--t3)">N/A</span>' : X(r.mer);
+    const merNote = r.mer==null ? '광고 미집행' : '중분류 단위';
+    const expanded = skuExpanded.has(r.prod);
+    const catColor = CAT_C[r.cat]||'#BAB0AC';
+    const safeProd = r.prod.replace(/'/g,"\\'");
+    return `<tr onclick="toggleSkuRow('${safeProd}')" style="cursor:pointer">
+        <td style="font-weight:600">${r.prod}</td>
+        <td><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${catColor};margin-right:5px;vertical-align:middle"></span>${r.sub||'-'}</td>
+        <td class="r">${WM(r.sales)}</td>
+        <td class="r">${r.qty?W(r.qty)+'박스':'-'}<div style="font-size:9px;color:var(--t3)">${units?W(units)+'개':''}</div></td>
+        <td class="r">${asp?WF(asp):'-'}</td>
+        <td class="r">${unitPrice?WF(unitPrice):'-'}</td>
+        <td class="r">${growth||'-'}</td>
+        <td class="r">${sparkline(r.trend)}</td>
+        <td class="r" title="${merNote}">${merStr}<div style="font-size:9px;color:var(--t3)">${merNote}</div></td>
+        <td class="r"><span style="color:var(--t3);font-size:11px">판정 대기</span></td>
+        <td class="r"><span style="color:var(--t3);font-size:11px">판정 대기</span></td>
+      </tr>${expanded?`<tr><td colspan="11" style="padding:10px 16px;background:#FAFBFC;border-bottom:1px solid #F3F4F6">
+        <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:11px;color:var(--t2)">
+          <div>방송광고비 <b>${r.adv?WM(r.adv):'-'}</b> <span style="color:var(--t3)">(배분 추정)</span></div>
+          <div>PPL <b>${r.ppl?WM(r.ppl):'-'}</b> <span style="color:var(--t3)">(배분 추정)</span></div>
+          <div>판매 지속월수 <b>${r.activeMonthsCnt}개월</b></div>
+          <div>연속 무매출 개월수 <b>${r.noSaleStreak}개월</b></div>
+        </div>
+      </td></tr>`:''}`;
+  }).join('');
+
+  document.getElementById('scrollArea').innerHTML=`
+  <div class="sec-title">SKU 진단 · 기준월 ${baseMonth}(마감)</div>
+  <div class="insight"><div class="ins-t">✦ 데이터 제약 안내</div><ul class="ins-ul">
+    <li>온라인 MER은 SKU 단위가 아닌 <b>중분류(제품라인) 단위</b> 배분값입니다 — 같은 중분류의 SKU는 동일한 값을 공유합니다.</li>
+    <li>표시된 SKU 중 <b>${noAdvSubCount}개 중분류</b>는 온라인 광고 집행 이력이 없어 MER이 <b>N/A</b>로 표시됩니다.</li>
+    <li>생애주기·진단 신호는 다음 단계에서 채워질 예정이라 현재는 "판정 대기"로 표시됩니다.</li>
+  </ul></div>
+  <div class="card">
+    <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap">
+      <div class="ct" style="margin-bottom:0">SKU 목록 <span class="ct-note">${sorted.length}개 · 매출 합계 ${WM(totalSales)}</span></div>
+      <input id="skuSearchInput" type="text" placeholder="SKU 검색..." value="${skuSearch.replace(/"/g,'&quot;')}" oninput="setSkuSearch(this.value)"
+        style="font-size:12px;padding:6px 10px;border:1px solid var(--b2);border-radius:8px;width:180px;font-family:inherit">
+    </div>
+    <div style="overflow-x:auto"><table class="tbl">
+      <thead><tr>
+        ${th('SKU','prod')}
+        ${th('카테고리','sub')}
+        ${th('기준월 매출','sales','r')}
+        ${th('판매수량','qty','r')}
+        ${th('ASP','','r')}
+        ${th('개당단가','','r')}
+        ${th('전월 대비','','r')}
+        ${th('최근 3개월 추세','','r')}
+        ${th('온라인 MER','mer','r')}
+        ${th('생애주기','','r')}
+        ${th('진단 신호','','r')}
+      </tr></thead>
+      <tbody>${bodyRows || `<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--t3)">검색 결과가 없습니다</td></tr>`}</tbody>
+    </table></div>
+  </div>`;
+}
+
 /* ── 워터폴 (손익 뷰용) ── */
 function drawWaterfall(canvasId, tot){
   const canvas=document.getElementById(canvasId);
@@ -1117,6 +1369,7 @@ function drawWaterfall(canvasId, tot){
 function renderAll(){
   destroyCharts();
   if(curView==='pnl') renderPnl();
+  else if(curView==='sku') renderSkuDiag();
   else renderStatus();
 }
 
