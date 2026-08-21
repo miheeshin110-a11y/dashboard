@@ -1666,6 +1666,14 @@ function renderBridge(){
   }
 
   const pc = b.diff>=0?'pos':'neg';
+  // 자동 인사이트 문장 — 각 효과가 전체 증감(diff)에서 차지하는 기여율(부호 있는 %, 합계=100%)
+  const contribPct = v => b.diff!==0 ? (v/b.diff*100) : 0;
+  const marketPct=contribPct(b.marketVolume), mixPct=contribPct(b.mix), pricePct=contribPct(b.priceEffect);
+  const otherEffect=b.newEffect+b.reactEffect-b.extinctEffect, otherPct=contribPct(otherEffect);
+  const dirWord = b.diff>0?'증가':b.diff<0?'감소':'변화 없음';
+  const bridgeSummary = b.diff!==0
+    ? `${b.baseMonth} 매출 ${dirWord} ${WM(Math.abs(b.diff))} 중 시장물량 ${marketPct.toFixed(0)}%, 상품믹스 ${mixPct.toFixed(0)}%, 가격효과 ${pricePct.toFixed(0)}%, 신규·재활성·소멸 조합 ${otherPct.toFixed(0)}%가 기여했습니다.`
+    : `${b.baseMonth} 매출은 전월과 동일했습니다.`;
   const sortedCommon = b.common.slice().sort((x,y)=>Math.abs(y.sales1-y.sales0)-Math.abs(x.sales1-x.sales0)).slice(0,8);
   const sortedNew = b.newG.slice().sort((x,y)=>y.sales1-x.sales1).slice(0,5);
   const sortedReact = b.react.slice().sort((x,y)=>y.sales1-x.sales1).slice(0,5);
@@ -1688,13 +1696,15 @@ function renderBridge(){
 
   document.getElementById('scrollArea').innerHTML=`
   <div class="sec-title">매출 증감 브리지 · ${b.prevMonth} → ${b.baseMonth}(마감)</div>
+  <div style="font-size:11px;color:var(--t3);margin:-8px 0 14px">이 페이지는 생애주기(성장/하락 판정)와는 다른 계산입니다 — 월간 매출 변화 원인 분해 전용입니다.</div>
   <div class="kpi-row" style="margin-bottom:12px">
     <div class="kc"><div class="kl">전월 매출</div><div class="kv">${WM(b.totalPrev)}</div><div class="ks">${b.prevMonth}</div></div>
     <div class="kc"><div class="kl">기준월 매출</div><div class="kv">${WM(b.totalBase)}</div><div class="ks">${b.baseMonth}(마감)</div></div>
     <div class="kc"><div class="kl">증감액</div><div class="kv ${pc}">${WM(b.diff)}</div><div class="ks">전월 대비</div></div>
     <div class="kc"><div class="kl">증감률</div><div class="kv ${pc}">${PCT(b.totalPrev?b.diff/b.totalPrev:0)}</div><div class="ks">검증 PASS · 잔차 ${b.residual}원</div></div>
   </div>
-  <div class="card"><div class="ct">매출 증감 브리지 워터폴</div>
+  <div class="insight"><div class="ins-t">✦ 증감 원인 요약</div><ul class="ins-ul"><li>${bridgeSummary}</li></ul></div>
+  <div class="card"><div class="ct">매출 증감 브리지 워터폴 <span class="ct-note">막대에 마우스를 올리면 설명이 표시됩니다</span></div>
     <div style="position:relative;width:100%;height:320px"><canvas id="cBridgeWaterfall" role="img" aria-label="매출 증감 브리지 워터폴" style="width:100%;height:100%"></canvas></div>
   </div>
   <div class="g2" style="margin-top:12px">
@@ -1731,9 +1741,19 @@ function renderBridge(){
       {label:'소멸',value:-b.extinctEffect,type:'minus'},
       {label:'당월매출',value:b.totalBase,type:'total'},
     ].filter(s=>s.label==='전월매출'||s.label==='당월매출'||s.value!==0);
-    drawWaterfallCore('cBridgeWaterfall', steps);
+    drawWaterfallCore('cBridgeWaterfall', steps, BRIDGE_STEP_DESC);
   }));
 }
+
+// 브리지 워터폴 막대 호버 설명(v6 §2 정의 그대로, 1줄 요약)
+const BRIDGE_STEP_DESC = {
+  시장물량:'구성 비율·가격 변화 없이 전체 물량만 늘어난 효과',
+  상품믹스:'물량은 같아도 고단가·저단가 조합 비중이 바뀐 효과',
+  가격효과:'동일 조합의 박스당 단가 변화 효과',
+  신규:'전월 대비 새로 생긴 조합의 매출',
+  재활성:'전월엔 무매출이었다가 이번 달 다시 팔린 조합의 매출',
+  소멸:'전월엔 팔렸는데 이번 달 사라진 조합의 매출',
+};
 
 /* ── 워터폴 (손익 뷰용) ── */
 function drawWaterfall(canvasId, tot){
@@ -1752,9 +1772,12 @@ function drawWaterfall(canvasId, tot){
 }
 
 // steps: [{label, value, type:'plus'|'minus'|'total'}] — value는 이미 부호까지 반영된 증감폭(마지막 total만 절대값)
-function drawWaterfallCore(canvasId, steps){
+// descriptions: {label: '1줄 설명'} — 있으면 해당 막대 위에 호버 시 title 툴팁으로 표시
+function drawWaterfallCore(canvasId, steps, descriptions){
   const canvas=document.getElementById(canvasId);
   if(!canvas) return;
+  const parent=canvas.parentElement;
+  if(parent && parent.querySelectorAll) parent.querySelectorAll('.wf-tip').forEach(el=>el.remove());
   const ctx=canvas.getContext('2d');
   const CW=canvas.offsetWidth||500, CH=canvas.offsetHeight||300;
   canvas.width=CW*window.devicePixelRatio; canvas.height=CH*window.devicePixelRatio;
@@ -1793,6 +1816,18 @@ function drawWaterfallCore(canvasId, steps){
     ctx.font='bold 10px Noto Sans KR,sans-serif';ctx.textAlign='center';ctx.fillText(lbl,x+barW/2,lblY);
     ctx.fillStyle='#4B5563';ctx.font='10px Noto Sans KR,sans-serif';ctx.textAlign='center';ctx.fillText(b.label,x+barW/2,CH-PAD.bottom+16);
   });
+  if(descriptions && parent && parent.appendChild){
+    bars.forEach((b,i)=>{
+      const desc=descriptions[b.label];
+      if(!desc) return;
+      const x=toX(i);
+      const tip=document.createElement('div');
+      tip.className='wf-tip';
+      tip.title=desc;
+      tip.style.cssText=`position:absolute;left:${x}px;top:0;width:${barW}px;height:${CH}px;cursor:help`;
+      parent.appendChild(tip);
+    });
+  }
 }
 
 /* ── 메인 렌더 ── */
