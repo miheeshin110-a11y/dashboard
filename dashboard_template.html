@@ -1294,9 +1294,19 @@ const LIFECYCLE_STYLE = {
   휴면:'background:#E5E7EB;color:#374151',
   판정유보:'background:#FEF4EC;color:#B45300;border:1px dashed #F3B17A',
 };
+// v6 §3 판정 기준 축약 — 생애주기 안내박스/툴팁에 재사용
+const LIFECYCLE_CRITERIA = {
+  성장:'최근 3개월 평균 전기 대비 +10%↑ (2회 연속)',
+  유지:'최근 3개월 평균 전기 대비 -10%~+10%',
+  하락:'최근 3개월 평균 전기 대비 10%↓ (2회 연속 시 확정)',
+  신규:'최초 판매 3개월 이내(6개월 미만 관측기간 포함)',
+  휴면:'유의미 매출 이력 있고 최근 2개월 연속 무매출',
+  판정유보:'관측기간 부족 또는 원장누락 의심 등',
+};
 function lifecycleBadge(lifecycle, dataState){
   const style = LIFECYCLE_STYLE[lifecycle]||LIFECYCLE_STYLE['유지'];
-  let html=`<span style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;${style}">${lifecycle}</span>`;
+  const crit = LIFECYCLE_CRITERIA[lifecycle]||'';
+  let html=`<span title="${crit}" style="display:inline-block;padding:2px 8px;border-radius:10px;font-size:11px;font-weight:600;cursor:help;${style}">${lifecycle}</span>`;
   if(dataState && dataState!=='정상') html+=`<div style="font-size:9px;color:var(--t3);margin-top:2px">데이터상태: ${dataState}</div>`;
   return html;
 }
@@ -1528,7 +1538,11 @@ function renderSkuDiag(){
   document.getElementById('scrollArea').innerHTML=`
   <div class="sec-title">매체×중분류×복합상품여부 진단 · 기준월 ${baseMonth}(마감)${isSnapshot?' · 과거 스냅샷 조회 중':''}</div>
   <div class="insight"><div class="ins-t">✦ 생애주기 분포 · 데이터 제약 안내</div><ul class="ins-ul">
-    <li>생애주기 분포: <b>${lifecycleSummary||'-'}</b></li>
+    <li>생애주기 분포: <b>${lifecycleSummary||'-'}</b>
+      <div style="margin-top:4px;font-size:10px;color:#4B7BAE;line-height:1.7">
+        ${['성장','유지','하락','신규','휴면','판정유보'].map(k=>`<b>${k}</b> ${LIFECYCLE_CRITERIA[k]}`).join(' &nbsp;·&nbsp; ')}
+      </div>
+    </li>
     <li>집계 단위는 <b>매체(방송/온라인 등) × 중분류 × 복합상품여부</b> 조합입니다. 실 판매 건수는 "세트"이지 박스가 아니라, 총박스수는 원장 O/P열(단위박스)을 곱해 계산합니다.</li>
     <li>MER은 <b>온라인만</b> 계산합니다(ONLINE 시트가 중분류 단위로 매핑돼 그룹별 귀속 근거가 있음). 방송광고비·개런티는 회차 단위로 집행되고 원장에 단품/복합 구분 없이 기록돼 이 그룹 전용으로 귀속할 근거가 없어 MER을 표시하지 않습니다. <b>${noAdvCount}개 조합</b>은 MER이 <b>N/A</b>로 표시됩니다.</li>
     <li>상품명별 박스당단가·상대단가 비교는 각 행을 클릭하면 드릴다운으로 확인할 수 있습니다.</li>
