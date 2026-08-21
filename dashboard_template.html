@@ -140,6 +140,7 @@ html,body{height:100%;font-family:'Noto Sans KR',sans-serif;background:var(--bg)
 .prod-ov-header{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
 .prod-ov-name{font-size:13px;font-weight:700}
 .prod-ov-badge{font-size:10px;font-weight:600;padding:2px 8px;border-radius:12px}
+.cat-badge{display:inline-block;font-size:11px;font-weight:700;padding:2px 9px;border-radius:10px;white-space:nowrap}
 .prod-ov-sales{font-size:20px;font-weight:700;letter-spacing:-.4px;margin-bottom:2px}
 .prod-ov-sub{font-size:10px;color:var(--t3)}
 .prod-ov-stats{display:grid;grid-template-columns:1fr 1fr;gap:6px;margin-top:10px}
@@ -252,14 +253,21 @@ const PNL_CATS  = {para:'파라다이스', acer:'아세로라'};
 const PNL_INFO  = {para:{label:'파라다이스그레인',icon:'🍇'},acer:{label:'그린아세로라',icon:'🍒'}};
 const MO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 const CAT_ORDER = ['알파cd','파라다이스','프리','비어랩','아세로라','베리','기타'];
-// 그레이스케일 명도 램프 — 무지개 대신 진한색→옅은색 순서로 항목 구분(항목명은 이미 텍스트로 표시됨)
-// 채도·명도를 맞춰 톤이 어울리도록 짠 팔레트(무지개 원색 아님) — 항목 구분용, 회색조 하나로 뭉개지 않음
+// 대분류 전용 소프트 파스텔 팔레트(지정값) — 배지·범례·차트 전체에서 카테고리 식별색으로 사용
+const CAT_C = {
+  파라다이스:'#8DA9C4', 알파cd:'#9BC7B8', 프리:'#E3B98F', 비어랩:'#D3A6C0',
+  아세로라:'#A6ACD8', 베리:'#E8C468', 기타:'#B7BAB4',
+};
+// CAT_C 배경 위 텍스트용 — 각 색상 계열의 진한 버전(대비 확보, 고정 흑/백 사용 안 함)
+const CAT_TEXT = {
+  파라다이스:'#0C2A42', 알파cd:'#0E3D2F', 프리:'#4A2E12', 비어랩:'#4A1E38',
+  아세로라:'#22265E', 베리:'#4A3405', 기타:'#33362F',
+};
+// 카테고리 외 항목(매체·광고매체·비용유형 등) 구분용 — 채도·명도를 맞춘 별도 팔레트(무지개 원색 아님)
 const PALETTE = ['#3F7A94','#4C6FA5','#6C5FA0','#96569C','#A65575','#A66056','#B37A3E','#9C9440','#6E9C4A','#4F9A6E','#3F9A87'];
-const CAT_C = Object.fromEntries(CAT_ORDER.map((k,i)=>[k, PALETTE[i%PALETTE.length]]));
 const MEDIA_C = {방송:PALETTE[0],온라인:PALETTE[2],홈쇼핑:PALETTE[4],기타:PALETTE[6]};
 const ADV_C = {SA:PALETTE[0],META:PALETTE[1],GDN:PALETTE[2],인플루언서:PALETTE[3],'기타 바이럴':PALETTE[4],그외:PALETTE[6]};
 const COST_C = PALETTE.slice(0,5);
-// 명도 램프 시퀀스 (중분류 등 여러 항목에 순서대로 사용) — 10항목이라 램프를 보간해서 확장
 const TOSS_PAL = PALETTE;
 
 /* ── 상태 ── */
@@ -727,7 +735,7 @@ function renderStatusAll(actM, allM){
         const share=totalSales?d.sales/totalSales:0;
         const pW=Math.round(share*100);
         return`<tr>
-          <td><span style="display:inline-block;width:8px;height:8px;border-radius:2px;background:${CAT_C[cat]||'#BAB0AC'};margin-right:6px;vertical-align:middle"></span><span style="font-weight:600">${cat}</span></td>
+          <td><span class="cat-badge" style="background:${CAT_C[cat]||'#B7BAB4'};color:${CAT_TEXT[cat]||'#33362F'}">${cat}</span></td>
           <td class="r">${WM(d.sales)}</td>
           <td class="r" style="min-width:100px">
             <div style="display:flex;align-items:center;gap:6px;justify-content:flex-end">
@@ -784,11 +792,11 @@ function renderStatusAll(actM, allM){
         ctx.fillStyle=color;
         ctx.beginPath(); ctx.roundRect(LPAD,y,Math.max(filled,4),BAR_H,4); ctx.fill();
 
-        // 제품명 — 항상 바 왼쪽 안에 흰 글자 고정
+        // 카테고리명 — 배경(파스텔 바)과 대비되는 해당 색상 계열의 진한 텍스트
         const labelY=y+BAR_H/2;
         ctx.font=`600 ${Math.min(13,BAR_H*0.55)}px Noto Sans KR,sans-serif`;
         ctx.textBaseline='middle'; ctx.textAlign='left';
-        ctx.fillStyle='#1F2937';
+        ctx.fillStyle=CAT_TEXT[cat]||'#33362F';
         ctx.fillText(cat, LPAD+10, labelY);
 
         // 오른쪽: 금액(위) + 비중(아래) — 항상 우측 고정
@@ -1505,7 +1513,7 @@ function renderSkuDiag(){
         </tr>`).join('');
     return `<tr class="exp-row${expanded?' expanded':''}" onclick="toggleSkuRow('${safeKey}')" style="cursor:pointer">
         <td style="font-weight:600"><span class="exp-chevron">▶</span>${r.label}${r.configRows.length>1?`<div style="font-size:9px;font-weight:400;color:var(--t3);margin-left:18px">포함 상품: ${r.configRows[0].prod} 외 ${r.configRows.length-1}종</div>`:''}</td>
-        <td><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${catColor};margin-right:5px;vertical-align:middle"></span>${r.cat}</td>
+        <td><span class="cat-badge" style="background:${catColor};color:${CAT_TEXT[r.cat]||'#33362F'}">${r.cat}</span></td>
         <td class="r">${WM(r.sales)}</td>
         <td class="r">${r.box?W(r.box)+'박스':'-'}</td>
         <td class="r">${boxPrice?WF(boxPrice):'-'}</td>
