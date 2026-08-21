@@ -29,13 +29,6 @@ def n(v):
     try: return float(str(v).replace(',', ''))
     except: return 0
 
-def parse_config(prod):
-    import re as _re
-    m = _re.findall(r'[가-힣a-zA-Z]+(\d+)', str(prod))
-    if m: return sum(int(x) for x in m) or 1
-    l = _re.search(r'(\d+)\s*$', str(prod))
-    return int(l.group(1)) if l else 1
-
 def build():
     print('📥 구글 시트 CSV 다운로드 중...')
 
@@ -60,8 +53,15 @@ def build():
         # cls 시트(상품분류) 매핑보다 더 완전하고 정확함 (cls 매핑은 342개 실 SKU 중 256개만 커버).
         sub = row[12].strip() if len(row) > 12 else ''
         if not sub: sub = cat
+        # 단위박스(O)/단위박스(2)(P) — v6: 원장 자체 컬럼(직접 파싱해 넣어둔 값)을 그대로 사용.
+        # 실 판매(qty)는 "박스"가 아니라 "세트/건수" — 총박스수 = qty × (O+P).
+        # O 공란은 낱개(1)로 폴백(비-SKU 노이즈 제외하면 실매출 있는 공란은 2건뿐, 176만원 수준으로 영향 미미).
+        o_raw = row[14].strip() if len(row) > 14 else ''
+        p_raw = row[15].strip() if len(row) > 15 else ''
+        o = n(o_raw) if o_raw else 1
+        p = n(p_raw) if p_raw else 0
         r = {'w': row[0].strip(), 'm': row[1].strip(), 'b': row[2].strip(),
-             'p': prod, 's': sub, 'v': n(row[4]), 'c': parse_config(prod), 't': cat}
+             'p': prod, 's': sub, 'v': n(row[4]), 'c': o + p, 'o': o, 'p2': p, 't': cat}
         if n(row[5]): r['q'] = n(row[5])
         if len(row) > 7 and n(row[7]): r['a'] = n(row[7])
         if len(row) > 8 and n(row[8]): r['l'] = n(row[8])

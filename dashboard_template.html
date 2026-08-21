@@ -243,7 +243,7 @@ html,body{height:100%;font-family:'Noto Sans KR',sans-serif;background:var(--bg)
 
 <script>
 const ALL_DATA = __DASHBOARD_DATA__;
-const RAW=ALL_DATA.raw.map(r=>({w:r.w,media:r.m,biz:r.b,prod:r.p,sub:r.s,sales:r.v,qty:r.q||0,config:r.c,adv:r.a||0,ppl:r.l||0,guarantee:r.g||0,cat:r.t})),
+const RAW=ALL_DATA.raw.map(r=>({w:r.w,media:r.m,biz:r.b,prod:r.p,sub:r.s,sales:r.v,qty:r.q||0,config:r.c,o:r.o||1,p2:r.p2||0,adv:r.a||0,ppl:r.l||0,guarantee:r.g||0,cat:r.t})),
       ONLINE=ALL_DATA.online.map(r=>({w:r.w,ch:r.h,type:r.y,prod:r.p,amt:r.v,cat:r.t,sub:r.s||''})),
       SAMPLE=ALL_DATA.sample, PURCHASE=ALL_DATA.purchase, OTHER=ALL_DATA.other,
       CAT_TREE=ALL_DATA.cat_tree, STOCK_MONTHLY=ALL_DATA.stock_monthly||{};
@@ -1008,11 +1008,11 @@ function renderStatusCat(actM, allM){
 
   <!-- 상품 TOP 10 — 매출 + 실판매수량 + 단품수량 -->
   <div class="card" style="margin-bottom:12px">
-    <div class="ct">상품 TOP 10 <span class="ct-note">확정매출 기준 · 단품수량 = 실판매(박스) × 구성개수</span></div>
+    <div class="ct">상품 TOP 10 <span class="ct-note">확정매출 기준 · 총박스수 = 실판매(세트) × 단위박스수(O+P)</span></div>
     <div style="overflow-x:auto"><table class="mtbl">
       <thead><tr>
         <th>#</th><th>상품코드</th><th class="r">구성</th>
-        <th class="r">매출</th><th class="r">실판매(박스)</th><th class="r">단품수량</th>
+        <th class="r">매출</th><th class="r">실판매(세트)</th><th class="r">총박스수</th>
         <th class="r">매출 비중</th>
       </tr></thead>
       <tbody>
@@ -1028,14 +1028,14 @@ function renderStatusCat(actM, allM){
           <td class="r" style="font-weight:${i<3?'600':'400'}">${WM(v.sales)}</td>
           <td class="r">
             <span style="font-weight:${i<3?'600':'400'}">${v.qty>0?W(v.qty):'-'}</span>
-            ${v.qty>0?`<span style="font-size:10px;color:var(--t3);margin-left:2px">박스</span>`:''}
+            ${v.qty>0?`<span style="font-size:10px;color:var(--t3);margin-left:2px">세트</span>`:''}
           </td>
           <td class="r">
             <div style="display:flex;align-items:center;gap:5px;justify-content:flex-end">
               <div style="width:44px;height:4px;background:#EDF0F4;border-radius:2px;overflow:hidden">
                 <div style="width:${unitPct}%;height:100%;background:${accentColor};border-radius:2px"></div>
               </div>
-              <span style="font-weight:${i<3?'600':'400'};min-width:40px;text-align:right;color:${i===0?accentColor:'inherit'}">${v.units>0?W(v.units):'-'}<span style="font-size:10px;color:var(--t3);font-weight:400">개</span></span>
+              <span style="font-weight:${i<3?'600':'400'};min-width:40px;text-align:right;color:${i===0?accentColor:'inherit'}">${v.units>0?W(v.units):'-'}<span style="font-size:10px;color:var(--t3);font-weight:400">박스</span></span>
             </div>
           </td>
           <td class="r" style="min-width:100px">
@@ -1052,8 +1052,8 @@ function renderStatusCat(actM, allM){
       <tfoot><tr>
         <td colspan="3">합계</td>
         <td class="r">${WM(d.sales)}</td>
-        <td class="r m">${W(prodEnt.reduce((a,[,v])=>a+v.qty,0))}박스</td>
-        <td class="r">${W(prodEnt.reduce((a,[,v])=>a+v.units,0))}개</td>
+        <td class="r m">${W(prodEnt.reduce((a,[,v])=>a+v.qty,0))}세트</td>
+        <td class="r">${W(prodEnt.reduce((a,[,v])=>a+v.units,0))}박스</td>
         <td class="r">-</td>
       </tr></tfoot>
     </table></div>
@@ -1097,12 +1097,18 @@ function renderStatusCat(actM, allM){
 }
 
 /* ══════════════════════════════
-   매체×중분류 진단 (SKU 대신 (media,sub) 집계)
+   매체×중분류×복합상품여부 진단 (v6 §1 — SKU 대신 3단 집계)
 ══════════════════════════════ */
-// (media,sub)별 RAW 행 그룹 (1회 계산) — media/sub는 원장에 이미 깨끗해 SKU 표준화 불필요
+// (media,sub,복합여부)별 RAW 행 그룹 (1회 계산) — media/sub는 원장에 이미 깨끗해 SKU 표준화 불필요.
+// 복합상품여부는 P열(단위박스(2)) 존재로만 판정 — 중분류 라벨의 "&" 표기 불일치를 데이터로 우회(v6 §0).
 const RAW_BY_MS = (()=>{
   const m={};
-  RAW.forEach(r=>{ if(!r.media||!r.sub) return; const k=r.media+'_'+r.sub; (m[k]=m[k]||[]).push(r); });
+  RAW.forEach(r=>{
+    if(!r.media||!r.sub) return;
+    const combo = r.p2>0 ? '복합' : '단품';
+    const k=r.media+'_'+r.sub+'_'+combo;
+    (m[k]=m[k]||[]).push(r);
+  });
   return m;
 })();
 const SKU_META = (()=>{
@@ -1110,9 +1116,10 @@ const SKU_META = (()=>{
   Object.entries(RAW_BY_MS).forEach(([key,rows])=>{
     if(!rows.some(r=>r.qty>0)) return;
     const media=rows[0].media, sub=rows[0].sub, cat=rows[0].cat;
+    const combo = rows.some(r=>r.p2>0) ? '복합' : '단품';
     const prods=[...new Set(rows.map(r=>r.prod).filter(Boolean))];
     const firstSaleMonth=rows.filter(r=>r.qty>0).map(r=>r.w).sort((a,b)=>MO.indexOf(a)-MO.indexOf(b))[0];
-    out[key]={media, sub, cat, label:`${media}-${sub}`, prods, firstSaleMonth};
+    out[key]={media, sub, cat, combo, label:`${media}-${sub}-${combo}`, prods, firstSaleMonth};
   });
   return out;
 })();
@@ -1179,15 +1186,16 @@ function fallbackTrend(recent3, prior3){
 }
 
 // 설계도 v5 §3 판정 순서 그대로: 원장누락의심→휴면→신규→관측기간부족→분모0예외→하락/성장/유지
-function classifyLifecycle(meta, monthSales, monthQty, months, idx, ledgerFlagged){
+// monthBox: 월별 총박스수(qty×config) 배열 — v6: qty(세트)가 아니라 실제 박스 기준으로 판정
+function classifyLifecycle(meta, monthSales, monthBox, months, idx, ledgerFlagged){
   const firstSaleIdx = Math.max(0, months.indexOf(meta.firstSaleMonth));
 
-  let cumQty=0, hasSignificant=false;
+  let cumBox=0, hasSignificant=false;
   for(let i=0;i<=idx;i++){
-    cumQty+=monthQty[i];
+    cumBox+=monthBox[i];
     if(monthSales[i]>=LIFECYCLE_CFG.significantSales) hasSignificant=true;
   }
-  if(cumQty>=LIFECYCLE_CFG.significantQty) hasSignificant=true;
+  if(cumBox>=LIFECYCLE_CFG.significantQty) hasSignificant=true;
 
   let noSaleStreak=0;
   for(let i=idx;i>=0;i--){ if(monthSales[i]<=0) noSaleStreak++; else break; }
@@ -1232,11 +1240,11 @@ function computeSignals(row, lifecycle, dataState, hasSignificant, subShareSurge
   if(dataState==='관측기간 부족') signals.push('판정데이터부족');
   if(hasSignificant && row.noSaleStreak>=2) signals.push('2개월무매출');
 
-  // ASP 기반 신호: 전월/당월 판매수량<=0이면 계산 제외(설계도 §6 공통 전제조건)
-  if(row.qty>0 && row.prevQty>0){
-    const asp=row.sales/row.qty, prevAsp=row.prevSales/row.prevQty;
+  // 박스당단가 기반 신호: 전월/당월 총박스수<=0이면 계산 제외(설계도 §6 공통 전제조건)
+  if(row.box>0 && row.prevBox>0){
+    const asp=row.sales/row.box, prevAsp=row.prevSales/row.prevBox;
     const priceGrowth=(asp-prevAsp)/prevAsp;
-    const qtyGrowth=(row.qty-row.prevQty)/row.prevQty;
+    const qtyGrowth=(row.box-row.prevBox)/row.prevBox;
     if(row.prevSales>0){
       const salesGrowth=(row.sales-row.prevSales)/row.prevSales;
       if(salesGrowth>=SIGNAL_THRESHOLDS.salesUpPriceDown.salesGrowth && priceGrowth<=SIGNAL_THRESHOLDS.salesUpPriceDown.priceGrowth) signals.push('매출↑단가↓');
@@ -1314,27 +1322,29 @@ function calcSkuDiag(cat){
     if(prevMonth && r.w===prevMonth && r.sub) onlineSpendBySubPrev[r.sub]=(onlineSpendBySubPrev[r.sub]||0)+r.amt;
   });
 
+  // v6: 실 판매(qty)는 "세트/건수"이지 박스가 아님 — 총박스수 = qty × config(=O+P)
+  const boxOf = r => r.qty*(r.config||1);
+
   const rows = msKeys.map(key=>{
     const meta=SKU_META[key];
     const msRows=RAW_BY_MS[key]||[];
     const baseRows=msRows.filter(r=>r.w===baseMonth);
     const prevRows=prevMonth?msRows.filter(r=>r.w===prevMonth):[];
     const sales=baseRows.reduce((a,r)=>a+r.sales,0);
-    const qty=baseRows.reduce((a,r)=>a+r.qty,0);
+    const box=baseRows.reduce((a,r)=>a+boxOf(r),0);
     const prevSales=prevRows.reduce((a,r)=>a+r.sales,0);
-    const prevQty=prevRows.reduce((a,r)=>a+r.qty,0);
+    const prevBox=prevRows.reduce((a,r)=>a+boxOf(r),0);
     const adv=baseRows.reduce((a,r)=>a+r.adv,0);
     const prevAdv=prevRows.reduce((a,r)=>a+r.adv,0);
     const ppl=baseRows.reduce((a,r)=>a+r.ppl,0);
     const guarantee=baseRows.reduce((a,r)=>a+r.guarantee,0);
     const prevGuarantee=prevRows.reduce((a,r)=>a+r.guarantee,0);
-    const units=baseRows.reduce((a,r)=>a+r.qty*(r.config||1),0);
     const bizMapBase={};
     baseRows.forEach(r=>{ bizMapBase[r.biz]=(bizMapBase[r.biz]||0)+r.sales; });
     const trend=last3.map(m=>msRows.filter(r=>r.w===m).reduce((a,r)=>a+r.sales,0));
     const monthSales=months.map(m=>msRows.filter(r=>r.w===m).reduce((a,r)=>a+r.sales,0));
-    const monthQty=months.map(m=>msRows.filter(r=>r.w===m).reduce((a,r)=>a+r.qty,0));
-    const activeMonthsCnt=monthQty.filter(q=>q>0).length;
+    const monthBox=months.map(m=>msRows.filter(r=>r.w===m).reduce((a,r)=>a+boxOf(r),0));
+    const activeMonthsCnt=monthBox.filter(b=>b>0).length;
     let noSaleStreak=0;
     for(let i=idx;i>=0;i--){ if(monthSales[i]<=0) noSaleStreak++; else break; }
 
@@ -1359,38 +1369,39 @@ function calcSkuDiag(cat){
 
     const ledgerFlagged = LEDGER_GAP.has(meta.cat+'_'+baseMonth) || baseRows.some(r=>r.qty>0 && r.sales<=0);
     const {lifecycle, dataState, signals:baseSignals, hasSignificant} =
-      classifyLifecycle(meta, monthSales, monthQty, months, idx, ledgerFlagged);
+      classifyLifecycle(meta, monthSales, monthBox, months, idx, ledgerFlagged);
 
-    // 대형구성비중급증 — 이 (media,sub) 조합에 속한 SKU들 중 config 최댓값 SKU의 판매수량 비중 급증 여부
+    // 대형구성비중급증 — 이 조합에 속한 상품명 중 config 최댓값 상품의 총박스수 비중 급증 여부
     const prodConfig={};
     msRows.forEach(r=>{ if(r.prod) prodConfig[r.prod]=r.config||1; });
     const prodList=Object.keys(prodConfig);
     let subShareSurge=false;
     if(prodList.length){
       const maxProd=prodList.reduce((best,p)=>prodConfig[p]>prodConfig[best]?p:best, prodList[0]);
-      const qtyByProd=(rowsArr)=>{ const m={}; rowsArr.forEach(r=>{ if(r.prod) m[r.prod]=(m[r.prod]||0)+r.qty; }); return m; };
-      const baseQtyByProd=qtyByProd(baseRows), prevQtyByProd=qtyByProd(prevRows);
-      const baseShare = qty ? (baseQtyByProd[maxProd]||0)/qty : 0;
-      const prevShare = prevQty ? (prevQtyByProd[maxProd]||0)/prevQty : 0;
+      const boxByProd=(rowsArr)=>{ const m={}; rowsArr.forEach(r=>{ if(r.prod) m[r.prod]=(m[r.prod]||0)+boxOf(r); }); return m; };
+      const baseBoxByProd=boxByProd(baseRows), prevBoxByProd=boxByProd(prevRows);
+      const baseShare = box ? (baseBoxByProd[maxProd]||0)/box : 0;
+      const prevShare = prevBox ? (prevBoxByProd[maxProd]||0)/prevBox : 0;
       subShareSurge = (baseShare-prevShare) >= SIGNAL_THRESHOLDS.largeConfigSurge.qtyShareIncrease;
     }
 
-    // 드릴다운 — 구성별 상대단가 비교(설계도 §4): 이 조합 내 SKU별 기준월 개당단가 ÷ 그룹 내 최고 개당단가
+    // 드릴다운 — 상품명별 상대단가 비교(v6 §1, 구 §4 흡수): 단위박스(O)/단위박스(2)(P)/총박스수/박스당단가/상대단가지수/비중
     const configRows=(()=>{
       const byProd={};
       baseRows.forEach(r=>{
         if(!r.prod) return;
-        byProd[r.prod]=byProd[r.prod]||{prod:r.prod, config:r.config||1, sales:0, qty:0};
-        byProd[r.prod].sales+=r.sales; byProd[r.prod].qty+=r.qty;
+        byProd[r.prod]=byProd[r.prod]||{prod:r.prod, o:r.o||1, p2:r.p2||0, sales:0, box:0};
+        byProd[r.prod].sales+=r.sales; byProd[r.prod].box+=boxOf(r);
       });
-      const list=Object.values(byProd).filter(x=>x.qty>0).map(x=>({...x, unitPrice: (x.qty*x.config)?x.sales/(x.qty*x.config):0}));
+      const list=Object.values(byProd).filter(x=>x.box>0).map(x=>({...x, unitPrice: x.box?x.sales/x.box:0}));
       const maxUnitPrice=Math.max(0, ...list.map(x=>x.unitPrice));
-      return list.map(x=>({...x, relIndex: maxUnitPrice? x.unitPrice/maxUnitPrice : 0}))
+      const totalBox=list.reduce((a,x)=>a+x.box,0);
+      return list.map(x=>({...x, relIndex: maxUnitPrice? x.unitPrice/maxUnitPrice : 0, boxShare: totalBox? x.box/totalBox : 0}))
         .sort((a,b)=>b.sales-a.sales);
     })();
 
-    const row = {key, label:meta.label, media:meta.media, cat:meta.cat, sub:meta.sub, prods:meta.prods,
-      sales, qty, units, prevSales, prevQty, adv, prevAdv, ppl, guarantee, prevGuarantee, bizMapBase,
+    const row = {key, label:meta.label, media:meta.media, cat:meta.cat, sub:meta.sub, combo:meta.combo, prods:meta.prods,
+      sales, box, prevSales, prevBox, adv, prevAdv, ppl, guarantee, prevGuarantee, bizMapBase,
       trend, activeMonthsCnt, noSaleStreak, mer, merBasis, adCost, prevAdCost, monotonicUp,
       lifecycle, dataState, configRows};
     row.signals = [...baseSignals, ...computeSignals(row, lifecycle, dataState, hasSignificant, subShareSurge)];
@@ -1454,31 +1465,31 @@ function renderSkuDiag(){
 
   const bodyRows = sorted.map(r=>{
     const growth = growthBadge(r.sales, r.prevSales);
-    const asp = r.qty ? r.sales/r.qty : 0;
-    const unitPrice = r.units ? r.sales/r.units : 0;
+    const boxPrice = r.box ? r.sales/r.box : 0;
     const merStr = r.mer==null ? '<span style="color:var(--t3)">N/A</span>' : X(r.mer);
     const merNote = r.merBasis==='online' ? '온라인 집행 기준' : r.merBasis==='broadcast' ? '방송(광고비+개런티) 기준' : '광고비 데이터 없음';
     const expanded = skuExpanded.has(r.key);
     const catColor = CAT_C[r.cat]||'#BAB0AC';
     const safeKey = r.key.replace(/'/g,"\\'");
     const configRows = r.configRows.map(c=>`<tr>
-          <td>${c.prod}</td><td class="r">${c.config}개입</td><td class="r">${c.qty?W(c.qty)+'박스':'-'}</td>
+          <td>${c.prod}</td><td class="r">${c.o}</td><td class="r">${c.p2||'-'}</td>
+          <td class="r">${c.box?W(c.box)+'박스':'-'}</td><td class="r">${WM(c.sales)}</td>
           <td class="r">${c.unitPrice?WF(c.unitPrice):'-'}</td>
           <td class="r" style="font-weight:${c.relIndex>=0.99?'700':'400'};color:${c.relIndex>=0.99?'var(--t1)':'var(--t2)'}">${c.unitPrice?c.relIndex.toFixed(2):'-'}</td>
+          <td class="r">${c.box?(c.boxShare*100).toFixed(1)+'%':'-'}</td>
         </tr>`).join('');
     return `<tr onclick="toggleSkuRow('${safeKey}')" style="cursor:pointer">
         <td style="font-weight:600">${r.label}</td>
         <td><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${catColor};margin-right:5px;vertical-align:middle"></span>${r.cat}</td>
         <td class="r">${WM(r.sales)}</td>
-        <td class="r">${r.qty?W(r.qty)+'박스':'-'}<div style="font-size:9px;color:var(--t3)">${r.units?W(r.units)+'개':''}</div></td>
-        <td class="r">${asp?WF(asp):'-'}</td>
-        <td class="r">${unitPrice?WF(unitPrice):'-'}</td>
+        <td class="r">${r.box?W(r.box)+'박스':'-'}</td>
+        <td class="r">${boxPrice?WF(boxPrice):'-'}</td>
         <td class="r">${growth||'-'}</td>
         <td class="r">${sparkline(r.trend)}</td>
         <td class="r" title="${merNote}">${merStr}<div style="font-size:9px;color:var(--t3)">${merNote}</div></td>
         <td class="r">${lifecycleBadge(r.lifecycle, r.dataState)}</td>
         <td class="r">${signalChips(r.signals)}</td>
-      </tr>${expanded?`<tr><td colspan="11" style="padding:10px 16px;background:#FAFBFC;border-bottom:1px solid #F3F4F6">
+      </tr>${expanded?`<tr><td colspan="10" style="padding:10px 16px;background:#FAFBFC;border-bottom:1px solid #F3F4F6">
         <div style="display:flex;gap:24px;flex-wrap:wrap;font-size:11px;color:var(--t2);margin-bottom:10px">
           <div>방송광고비 <b>${r.adv?WM(r.adv):'-'}</b> <span style="color:var(--t3)">(배분 추정)</span></div>
           <div>개런티(정액비) <b>${r.guarantee?WM(r.guarantee):'-'}</b></div>
@@ -1487,43 +1498,42 @@ function renderSkuDiag(){
           <div>연속 무매출 개월수 <b>${r.noSaleStreak}개월</b></div>
           <div>최초 판매월 <b>${SKU_META[r.key].firstSaleMonth||'-'}</b></div>
         </div>
-        <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">구성별 상대단가 비교 (§4)</div>
+        <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">상품명별 상대단가 비교 (v6 §1 드릴다운)</div>
         <table class="tbl" style="background:#fff">
-          <thead><tr><th>SKU</th><th class="r">구성</th><th class="r">판매수량</th><th class="r">개당단가</th><th class="r">상대단가지수</th></tr></thead>
-          <tbody>${configRows||`<tr><td colspan="5" style="text-align:center;color:var(--t3);padding:10px">기준월 판매 없음</td></tr>`}</tbody>
+          <thead><tr><th>상품명</th><th class="r">단위박스(O)</th><th class="r">단위박스(2)(P)</th><th class="r">총박스수</th><th class="r">매출</th><th class="r">박스당단가</th><th class="r">상대단가지수</th><th class="r">총박스수 비중</th></tr></thead>
+          <tbody>${configRows||`<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:10px">기준월 판매 없음</td></tr>`}</tbody>
         </table>
       </td></tr>`:''}`;
   }).join('');
 
   document.getElementById('scrollArea').innerHTML=`
-  <div class="sec-title">매체×중분류 진단 · 기준월 ${baseMonth}(마감)</div>
+  <div class="sec-title">매체×중분류×복합상품여부 진단 · 기준월 ${baseMonth}(마감)</div>
   <div class="insight"><div class="ins-t">✦ 생애주기 분포 · 데이터 제약 안내</div><ul class="ins-ul">
     <li>생애주기 분포: <b>${lifecycleSummary||'-'}</b></li>
-    <li>집계 단위는 개별 SKU가 아니라 <b>매체(방송/온라인 등) × 중분류</b> 조합입니다 — 원장에 이미 깨끗한 필드라 SKU 표준화 없이 바로 집계됩니다.</li>
+    <li>집계 단위는 <b>매체(방송/온라인 등) × 중분류 × 복합상품여부</b> 조합입니다. 실 판매 건수는 "세트"이지 박스가 아니라, 총박스수는 원장 O/P열(단위박스)을 곱해 계산합니다.</li>
     <li>MER은 온라인은 ONLINE 시트 광고비, 방송은 RAW의 광고비+개런티(정액비)를 각각 기준으로 계산합니다. <b>${noAdvCount}개 조합</b>은 광고비 데이터가 없어 MER이 <b>N/A</b>로 표시됩니다.</li>
-    <li>구성(용량)별 개당단가 비교는 각 행을 클릭하면 드릴다운으로 확인할 수 있습니다.</li>
+    <li>상품명별 박스당단가·상대단가 비교는 각 행을 클릭하면 드릴다운으로 확인할 수 있습니다.</li>
   </ul></div>
   <div class="card">
     <div style="display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;gap:12px;flex-wrap:wrap">
-      <div class="ct" style="margin-bottom:0">매체×중분류 목록 <span class="ct-note">${sorted.length}개 · 매출 합계 ${WM(totalSales)}</span></div>
-      <input id="skuSearchInput" type="text" placeholder="검색 (예: 방송, 트리플)" value="${skuSearch.replace(/"/g,'&quot;')}" oninput="setSkuSearch(this.value)"
-        style="font-size:12px;padding:6px 10px;border:1px solid var(--b2);border-radius:8px;width:180px;font-family:inherit">
+      <div class="ct" style="margin-bottom:0">매체×중분류×복합여부 목록 <span class="ct-note">${sorted.length}개 · 매출 합계 ${WM(totalSales)}</span></div>
+      <input id="skuSearchInput" type="text" placeholder="검색 (예: 방송, 트리플, 복합)" value="${skuSearch.replace(/"/g,'&quot;')}" oninput="setSkuSearch(this.value)"
+        style="font-size:12px;padding:6px 10px;border:1px solid var(--b2);border-radius:8px;width:200px;font-family:inherit">
     </div>
     <div style="overflow-x:auto"><table class="tbl">
       <thead><tr>
-        ${th('구분(매체·중분류)','label')}
+        ${th('구분(매체·중분류·복합여부)','label')}
         ${th('카테고리','sub')}
         ${th('기준월 매출','sales','r')}
-        ${th('판매수량','qty','r')}
-        ${th('ASP','','r')}
-        ${th('개당단가(평균)','','r')}
+        ${th('총박스수','box','r')}
+        ${th('박스당단가','','r')}
         ${th('전월 대비','','r')}
         ${th('최근 3개월 추세','','r')}
         ${th('광고 MER','mer','r')}
         ${th('생애주기','','r')}
         ${th('진단 신호','','r')}
       </tr></thead>
-      <tbody>${bodyRows || `<tr><td colspan="11" style="text-align:center;padding:30px;color:var(--t3)">검색 결과가 없습니다</td></tr>`}</tbody>
+      <tbody>${bodyRows || `<tr><td colspan="10" style="text-align:center;padding:30px;color:var(--t3)">검색 결과가 없습니다</td></tr>`}</tbody>
     </table></div>
   </div>`;
 }
@@ -1546,8 +1556,9 @@ function calcBridge(cat){
     const rows=RAW_BY_MS[key]||[];
     const baseRows=rows.filter(r=>r.w===baseMonth);
     const prevRows=rows.filter(r=>r.w===prevMonth);
-    const Q1=baseRows.reduce((a,r)=>a+r.qty,0);
-    const Q0=prevRows.reduce((a,r)=>a+r.qty,0);
+    // v6: Q0/Q1은 총박스수(qty×config) 기준 — 실 판매(qty)는 세트/건수라 그대로 쓰면 안 됨
+    const Q1=baseRows.reduce((a,r)=>a+r.qty*(r.config||1),0);
+    const Q0=prevRows.reduce((a,r)=>a+r.qty*(r.config||1),0);
     // 순수량이 0/음수로 상쇄되는 달은 매출도 0으로 처리(반품·조정 항목이 서로 다른 상품명으로
     // 잡혀 수량은 상쇄돼도 금액이 잔여로 남는 경우가 있음 — 그 잔여 매출은 브리지 계산에서 제외).
     const sales1=Q1>0 ? baseRows.reduce((a,r)=>a+r.sales,0) : 0;
