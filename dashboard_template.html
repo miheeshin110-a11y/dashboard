@@ -1758,6 +1758,7 @@ function renderBridge(){
   const accPanel = `
   <div class="card" style="margin-top:12px">
     <div class="ct">효과별 정의·계산·결과 <span class="ct-note">% 기준 = 전월 매출 대비(직관적 지표) · 행을 클릭하면 세부 내역이 펼쳐집니다</span></div>
+    <div style="font-size:11px;color:var(--t3);margin:-4px 0 10px">※ 시장물량·상품믹스는 실제 특정 상품/조합을 가리키는 것이 아니라, 매출 증감을 물량과 가격 요인으로 나누기 위한 계산상의 가상 분해 항목입니다.</div>
     <div style="overflow-x:auto"><table class="tbl acc-tbl">
       <thead><tr><th style="width:80px">구분</th><th>정의 · 계산식</th><th style="width:130px">결과</th></tr></thead>
       <tbody>
@@ -1829,8 +1830,8 @@ function renderBridge(){
 
 // 브리지 워터폴 범례 — hover는 Canvas에서 안정적으로 안 걸려 항상 노출되는 고정 표로 대체(v6 §2 정의 그대로)
 const BRIDGE_STEP_DESC = {
-  시장물량:'구성 비율·가격 변화 없이 전체 물량만 늘어난 효과',
-  상품믹스:'물량은 같아도 고단가/저단가 조합 비중이 바뀐 효과',
+  시장물량:'전 조합이 전월 평균단가를 유지했다고 가정할 때, 총물량 증가만으로 얻었을 매출 증가분(실제 조합이 아닌 가상 기준선 계산)',
+  상품믹스:'총물량 증가분이 평균보다 비싼 조합과 싼 조합 중 어느 쪽에 더 쏠렸는지에 따른 효과. 비싼 조합 위주로 늘면 +, 싼 조합 위주로 늘면 -',
   가격효과:'동일 조합의 박스당 단가 변화 효과',
   신규조합:'전월엔 없다가 이번 달 새로 매출 발생한 조합',
   재활성조합:'전월 매출 0이었다가 이번 달 다시 매출 발생한 조합',
