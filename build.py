@@ -29,6 +29,11 @@ def n(v):
     try: return float(str(v).replace(',', ''))
     except: return 0
 
+# 원장 중분류/대분류 표기 불일치 정정 — 같은 상품인데 다른 라벨로 기록된 경우 정규화.
+# (원인 파악: 올인원프리/원데이올인원, 올레/올레샷 — 올레샷은 대분류까지 잘못 들어간 행 있음)
+SUB_ALIAS = {'원데이올인원': '올인원프리', '올레': '올레샷'}
+CAT_ALIAS = {'올레샷': '기타'}
+
 def build():
     print('📥 구글 시트 CSV 다운로드 중...')
 
@@ -48,11 +53,13 @@ def build():
         if len(row) < 12 or not row[0]: continue
         cat = row[11].strip() if len(row) > 11 else ''
         if not cat: continue
+        cat = CAT_ALIAS.get(cat, cat)
         prod = row[3].strip()
         # 중분류는 RAW 시트 자체 컬럼(row[12])을 그대로 사용 — ONLINE.중분류와 같은 분류체계라
         # cls 시트(상품분류) 매핑보다 더 완전하고 정확함 (cls 매핑은 342개 실 SKU 중 256개만 커버).
         sub = row[12].strip() if len(row) > 12 else ''
         if not sub: sub = cat
+        sub = SUB_ALIAS.get(sub, sub)
         # 단위박스(O)/단위박스(2)(P) — v6: 원장 자체 컬럼(직접 파싱해 넣어둔 값)을 그대로 사용.
         # 실 판매(qty)는 "박스"가 아니라 "세트/건수" — 총박스수 = qty × (O+P).
         # O 공란은 낱개(1)로 폴백(비-SKU 노이즈 제외하면 실매출 있는 공란은 2건뿐, 176만원 수준으로 영향 미미).
@@ -76,11 +83,14 @@ def build():
         if len(row) < 6 or not row[0]: continue
         cat = row[7].strip() if len(row) > 7 else ''
         if not cat: continue
+        cat = CAT_ALIAS.get(cat, cat)
+        sub = row[8].strip() if len(row) > 8 else ''
+        sub = SUB_ALIAS.get(sub, sub)
         online.append({'w': row[0].strip(), 'h': row[2].strip() if len(row) > 2 else '',
                        'y': row[3].strip() if len(row) > 3 else '',
                        'p': row[4].strip() if len(row) > 4 else '',
                        'v': n(row[5]), 't': cat,
-                       's': row[8].strip() if len(row) > 8 else ''})
+                       's': sub})
     print(f'  온라인광고비: {len(online)}건')
 
     # 샘플

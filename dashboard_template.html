@@ -380,10 +380,13 @@ function getBaseMonth(months){
 function buildFilter(){
   if(curView==='sku'){
     const ms=allMonthsFor();
-    const base=getBaseMonth(ms);
-    document.getElementById('filterWrap').innerHTML = base
-      ? `<span class="filter-label">분석 기준월</span><span class="mchip on" style="cursor:default">${base} (마감)</span>`
-      : `<span class="filter-label">데이터 없음</span>`;
+    const trueBase=getBaseMonth(ms);
+    if(!trueBase){ document.getElementById('filterWrap').innerHTML=`<span class="filter-label">데이터 없음</span>`; return; }
+    const avail=ms.slice(0, ms.indexOf(trueBase)+1); // 마감된(진행중이 아닌) 달까지만 스냅샷 조회 허용
+    const sel=(skuSnapMonth && avail.includes(skuSnapMonth)) ? skuSnapMonth : trueBase;
+    let h=`<span class="filter-label">기준월(스냅샷)</span>`;
+    h+=avail.map(m=>`<button class="mchip ${m===sel?'on':''}" onclick="setSkuSnapMonth('${m}')">${m}${m===trueBase?'(마감)':''}</button>`).join('');
+    document.getElementById('filterWrap').innerHTML=h;
     return;
   }
   if(curView==='bridge'){
@@ -1274,6 +1277,8 @@ function computeSignals(row, lifecycle, dataState, hasSignificant, subShareSurge
 let skuSort = {key:'sales', dir:'desc'};
 let skuSearch = '';
 let skuExpanded = new Set();
+let skuSnapMonth = null; // null=실제 마감월. 값이 있으면 그 달을 임시 기준월처럼 취급해 전체 재계산(스냅샷 조회)
+function setSkuSnapMonth(m){ skuSnapMonth = m; renderSkuDiag(); }
 
 const LIFECYCLE_STYLE = {
   성장:'background:#DFFAEB;color:#1D8A3A',
@@ -1307,8 +1312,12 @@ function sparkline(vals){
 
 function calcSkuDiag(cat){
   const months = allMonthsFor();
-  const baseMonth = getBaseMonth(months);
-  if(!baseMonth) return {baseMonth:null, prevMonth:null, months, rows:[]};
+  const trueBaseMonth = getBaseMonth(months);
+  // 월탭 스냅샷 조회: 선택된 과거월이 있으면 그 달을 임시 기준월(마감)로 취급해 전체 재계산.
+  // 진행 중인 당월보다 앞선(이미 마감된) 달만 허용 — trueBaseMonth 이후 달은 선택 불가.
+  const baseMonth = (skuSnapMonth && months.includes(skuSnapMonth) && months.indexOf(skuSnapMonth)<=months.indexOf(trueBaseMonth))
+    ? skuSnapMonth : trueBaseMonth;
+  if(!baseMonth) return {baseMonth:null, trueBaseMonth, prevMonth:null, months, rows:[]};
   const idx = months.indexOf(baseMonth);
   const prevMonth = idx>0 ? months[idx-1] : null;
   const last3 = months.slice(Math.max(0,idx-2), idx+1);
@@ -1408,7 +1417,7 @@ function calcSkuDiag(cat){
     return row;
   });
 
-  return {baseMonth, prevMonth, months, rows};
+  return {baseMonth, trueBaseMonth, prevMonth, months, rows};
 }
 
 function skuSortRows(rows){
@@ -1440,7 +1449,8 @@ function toggleSkuRow(key){
 }
 
 function renderSkuDiag(){
-  const {baseMonth, rows} = calcSkuDiag(curCat);
+  const {baseMonth, trueBaseMonth, rows} = calcSkuDiag(curCat);
+  const isSnapshot = baseMonth && trueBaseMonth && baseMonth!==trueBaseMonth;
 
   if(!baseMonth){
     document.getElementById('scrollArea').innerHTML=`<div class="sec-title">매체×중분류 진단</div><div class="card" style="text-align:center;padding:40px;color:var(--t3)">데이터가 없습니다</div>`;
@@ -1479,7 +1489,7 @@ function renderSkuDiag(){
           <td class="r">${c.box?(c.boxShare*100).toFixed(1)+'%':'-'}</td>
         </tr>`).join('');
     return `<tr onclick="toggleSkuRow('${safeKey}')" style="cursor:pointer">
-        <td style="font-weight:600">${r.label}</td>
+        <td style="font-weight:600">${r.label}${r.configRows.length>1?`<div style="font-size:9px;font-weight:400;color:var(--t3)">포함 상품: ${r.configRows[0].prod} 외 ${r.configRows.length-1}종</div>`:''}</td>
         <td><span style="display:inline-block;width:7px;height:7px;border-radius:2px;background:${catColor};margin-right:5px;vertical-align:middle"></span>${r.cat}</td>
         <td class="r">${WM(r.sales)}</td>
         <td class="r">${r.box?W(r.box)+'박스':'-'}</td>
@@ -1507,7 +1517,7 @@ function renderSkuDiag(){
   }).join('');
 
   document.getElementById('scrollArea').innerHTML=`
-  <div class="sec-title">매체×중분류×복합상품여부 진단 · 기준월 ${baseMonth}(마감)</div>
+  <div class="sec-title">매체×중분류×복합상품여부 진단 · 기준월 ${baseMonth}(마감)${isSnapshot?' · 과거 스냅샷 조회 중':''}</div>
   <div class="insight"><div class="ins-t">✦ 생애주기 분포 · 데이터 제약 안내</div><ul class="ins-ul">
     <li>생애주기 분포: <b>${lifecycleSummary||'-'}</b></li>
     <li>집계 단위는 <b>매체(방송/온라인 등) × 중분류 × 복합상품여부</b> 조합입니다. 실 판매 건수는 "세트"이지 박스가 아니라, 총박스수는 원장 O/P열(단위박스)을 곱해 계산합니다.</li>
