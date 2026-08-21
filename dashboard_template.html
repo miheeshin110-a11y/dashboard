@@ -1626,7 +1626,9 @@ function calcBridge(cat){
   const Q0_common = common.reduce((a,x)=>a+x.Q0,0);
   const Q1_common = common.reduce((a,x)=>a+x.Q1,0);
   const sales0_common = common.reduce((a,x)=>a+x.sales0,0);
+  const sales1_common = common.reduce((a,x)=>a+x.sales1,0);
   const 전월공통평균ASP = Q0_common ? sales0_common/Q0_common : 0;
+  const 당월공통평균ASP = Q1_common ? sales1_common/Q1_common : 0;
   const 시장물량효과 = (Q1_common-Q0_common)*전월공통평균ASP;
   const 상품믹스효과 = 공통수량효과 - 시장물량효과;
 
@@ -1655,7 +1657,8 @@ function calcBridge(cat){
   return {baseMonth, prevMonth, totalBase, totalPrev, diff, common, newG, react, extinct,
     marketVolume:시장물량효과, mix:상품믹스효과, priceEffect:가격효과, newEffect, reactEffect, extinctEffect,
     bridgeSum, residual, pass, anomalies,
-    Q0_common, Q1_common, sales0_common, avgP0Common:전월공통평균ASP, commonQtyEffect:공통수량효과};
+    Q0_common, Q1_common, sales0_common, sales1_common,
+    avgP0Common:전월공통평균ASP, avgP1Common:당월공통평균ASP, commonQtyEffect:공통수량효과};
 }
 
 let bridgeRowExpanded = new Set();
@@ -1763,8 +1766,17 @@ function renderBridge(){
       <thead><tr><th style="width:80px">구분</th><th>정의 · 계산식</th><th style="width:130px">결과</th></tr></thead>
       <tbody>
         ${accRow('market','시장물량', BRIDGE_STEP_DESC.시장물량,
-          `(${W(b.Q1_common)} − ${W(b.Q0_common)}) × ${WF(b.avgP0Common)}원 = ${WM(b.marketVolume)}`,
-          b.marketVolume, false)}
+          `(${W(b.Q1_common)} − ${W(b.Q0_common)}) × ${WF(b.avgP0Common)} = ${WM(b.marketVolume)}`,
+          b.marketVolume, true, (()=>{
+            const asaDiff = b.avgP1Common - b.avgP0Common;
+            const asaDir = asaDiff>0?'상승':asaDiff<0?'하락':'변화 없음';
+            const priceDir = b.priceEffect>0?'+(상승)':b.priceEffect<0?'-(하락)':'변화 없음';
+            const aligned = (asaDiff>=0)===(b.priceEffect>=0);
+            return `<div class="pr"><span>전월 공통그룹 평균단가</span><span>전월 매출합계(${WM(b.sales0_common)}) ÷ Box0_common(${W(b.Q0_common)}) = <b>${WF(b.avgP0Common)}</b></span></div>
+            <div class="pr"><span>당월 공통그룹 평균단가</span><span>당월 매출합계(${WM(b.sales1_common)}) ÷ Box1_common(${W(b.Q1_common)}) = <b>${WF(b.avgP1Common)}</b></span></div>
+            <div class="pr"><span>평균단가 변화</span><span class="${asaDiff>=0?'pos':'neg'}">${asaDiff>=0?'+':''}${WF(asaDiff)} (${asaDir})</span></div>
+            <div style="font-size:11px;color:var(--t3);margin-top:4px">sanity check: 전체 평균단가는 ${asaDir}했고, 그룹별로 합산한 가격효과는 ${priceDir}입니다 ${aligned?'— 방향이 일치합니다.':'— 방향이 다릅니다(그룹별 단가·물량 가중치 차이로 발생 가능, 이상치는 아님).'} 가격효과는 그룹별로 다르게 계산되므로 전체 평균단가 변화와 정확히 비례하지는 않습니다.</div>`;
+          })(), '전월·당월 공통그룹 평균단가 비교(가격효과 방향 sanity check)')}
         ${accRow('mix','상품믹스', BRIDGE_STEP_DESC.상품믹스,
           `공통그룹 수량효과(${WM(b.commonQtyEffect)}) − 시장물량효과(${WM(b.marketVolume)}) = ${WM(b.mix)}`,
           b.mix, true, commonMixRows, `공통 조합(전월·당월 모두 판매) 매출 변동 TOP${sortedCommon.length}`)}
