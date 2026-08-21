@@ -253,13 +253,14 @@ const PNL_INFO  = {para:{label:'파라다이스그레인',icon:'🍇'},acer:{lab
 const MO = ['1월','2월','3월','4월','5월','6월','7월','8월','9월','10월','11월','12월'];
 const CAT_ORDER = ['알파cd','파라다이스','프리','비어랩','아세로라','베리','기타'];
 // 그레이스케일 명도 램프 — 무지개 대신 진한색→옅은색 순서로 항목 구분(항목명은 이미 텍스트로 표시됨)
-const NEUTRAL_RAMP = ['#1F2937','#374151','#4B5563','#6B7280','#8B95A1','#AEB6C0','#D1D5DB'];
-const CAT_C = Object.fromEntries(CAT_ORDER.map((k,i)=>[k, NEUTRAL_RAMP[i%NEUTRAL_RAMP.length]]));
-const MEDIA_C = {방송:NEUTRAL_RAMP[0],온라인:NEUTRAL_RAMP[2],홈쇼핑:NEUTRAL_RAMP[4],기타:NEUTRAL_RAMP[6]};
-const ADV_C = {SA:NEUTRAL_RAMP[0],META:NEUTRAL_RAMP[1],GDN:NEUTRAL_RAMP[2],인플루언서:NEUTRAL_RAMP[3],'기타 바이럴':NEUTRAL_RAMP[4],그외:NEUTRAL_RAMP[6]};
-const COST_C = NEUTRAL_RAMP.slice(0,5);
+// 채도·명도를 맞춰 톤이 어울리도록 짠 팔레트(무지개 원색 아님) — 항목 구분용, 회색조 하나로 뭉개지 않음
+const PALETTE = ['#3F7A94','#4C6FA5','#6C5FA0','#96569C','#A65575','#A66056','#B37A3E','#9C9440','#6E9C4A','#4F9A6E','#3F9A87'];
+const CAT_C = Object.fromEntries(CAT_ORDER.map((k,i)=>[k, PALETTE[i%PALETTE.length]]));
+const MEDIA_C = {방송:PALETTE[0],온라인:PALETTE[2],홈쇼핑:PALETTE[4],기타:PALETTE[6]};
+const ADV_C = {SA:PALETTE[0],META:PALETTE[1],GDN:PALETTE[2],인플루언서:PALETTE[3],'기타 바이럴':PALETTE[4],그외:PALETTE[6]};
+const COST_C = PALETTE.slice(0,5);
 // 명도 램프 시퀀스 (중분류 등 여러 항목에 순서대로 사용) — 10항목이라 램프를 보간해서 확장
-const TOSS_PAL = [...NEUTRAL_RAMP, '#293544','#424C58','#5C6672','#77808B'];
+const TOSS_PAL = PALETTE;
 
 /* ── 상태 ── */
 let curView   = 'status';   // 'pnl' | 'status' | 'sku' | 'bridge'
