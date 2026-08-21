@@ -1407,8 +1407,8 @@ function calcSkuDiag(cat){
       const byProd={};
       baseRows.forEach(r=>{
         if(!r.prod) return;
-        byProd[r.prod]=byProd[r.prod]||{prod:r.prod, o:r.o||1, p2:r.p2||0, sales:0, box:0};
-        byProd[r.prod].sales+=r.sales; byProd[r.prod].box+=boxOf(r);
+        byProd[r.prod]=byProd[r.prod]||{prod:r.prod, o:r.o||1, p2:r.p2||0, sales:0, box:0, qty:0};
+        byProd[r.prod].sales+=r.sales; byProd[r.prod].box+=boxOf(r); byProd[r.prod].qty+=r.qty;
       });
       const list=Object.values(byProd).filter(x=>x.box>0).map(x=>({...x, unitPrice: x.box?x.sales/x.box:0}));
       const maxUnitPrice=Math.max(0, ...list.map(x=>x.unitPrice));
@@ -1491,7 +1491,7 @@ function renderSkuDiag(){
     const catColor = CAT_C[r.cat]||'#BAB0AC';
     const safeKey = r.key.replace(/'/g,"\\'");
     const configRows = r.configRows.map(c=>`<tr>
-          <td>${c.prod}</td><td class="r">${c.o}</td><td class="r">${c.p2||'-'}</td>
+          <td>${c.prod}</td><td class="r">${W(c.qty)}건</td><td class="r">${c.o}</td><td class="r">${c.p2||'-'}</td>
           <td class="r">${c.box?W(c.box)+'박스':'-'}</td><td class="r">${WM(c.sales)}</td>
           <td class="r">${c.unitPrice?WF(c.unitPrice):'-'}</td>
           <td class="r" style="font-weight:${c.relIndex>=0.99?'700':'400'};color:${c.relIndex>=0.99?'var(--t1)':'var(--t2)'}">${c.unitPrice?c.relIndex.toFixed(2):'-'}</td>
@@ -1519,8 +1519,8 @@ function renderSkuDiag(){
         </div>
         <div style="font-size:10px;font-weight:700;color:var(--t3);text-transform:uppercase;letter-spacing:.04em;margin-bottom:6px">상품명별 상대단가 비교 (v6 §1 드릴다운)</div>
         <table class="tbl" style="background:#fff">
-          <thead><tr><th>상품명</th><th class="r">단위박스(O)</th><th class="r">단위박스(2)(P)</th><th class="r">총박스수</th><th class="r">매출</th><th class="r">박스당단가</th><th class="r">상대단가지수</th><th class="r">총박스수 비중</th></tr></thead>
-          <tbody>${configRows||`<tr><td colspan="8" style="text-align:center;color:var(--t3);padding:10px">기준월 판매 없음</td></tr>`}</tbody>
+          <thead><tr><th>상품명</th><th class="r">실판매건수</th><th class="r">단위박스(O)</th><th class="r">단위박스(2)(P)</th><th class="r">총박스수</th><th class="r">매출</th><th class="r">박스당단가</th><th class="r">상대단가지수</th><th class="r">총박스수 비중</th></tr></thead>
+          <tbody>${configRows||`<tr><td colspan="9" style="text-align:center;color:var(--t3);padding:10px">기준월 판매 없음</td></tr>`}</tbody>
         </table>
       </td></tr>`:''}`;
   }).join('');
