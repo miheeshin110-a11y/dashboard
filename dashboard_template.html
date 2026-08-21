@@ -263,11 +263,17 @@ const CAT_TEXT = {
   파라다이스:'#0C2A42', 알파cd:'#0E3D2F', 프리:'#4A2E12', 비어랩:'#4A1E38',
   아세로라:'#22265E', 베리:'#4A3405', 기타:'#33362F',
 };
-// 카테고리 외 항목(매체·광고매체·비용유형 등) 구분용 — 채도·명도를 맞춘 별도 팔레트(무지개 원색 아님)
+// 채널 분석(미디어·비용구성·온라인광고유형) 전용 파스텔 5색 — CAT_C와 같은 계열 톤으로 통일
+const PASTEL5 = ['#8DA9C4','#9BC7B8','#E3B98F','#D3A6C0','#B7BAB4'];
+const PASTEL5_TEXT = ['#0C2A42','#0E3D2F','#4A2E12','#4A1E38','#33362F'];
+const MEDIA_C = {방송:PASTEL5[0],미디어:PASTEL5[0],온라인:PASTEL5[1],오프라인:PASTEL5[2],글로벌:PASTEL5[3],홈쇼핑:'#A6ACD8',기타:PASTEL5[4]};
+const MEDIA_TEXT = {방송:PASTEL5_TEXT[0],미디어:PASTEL5_TEXT[0],온라인:PASTEL5_TEXT[1],오프라인:PASTEL5_TEXT[2],글로벌:PASTEL5_TEXT[3],홈쇼핑:'#22265E',기타:PASTEL5_TEXT[4]};
+const ADV_C = {SA:PASTEL5[0],META:PASTEL5[1],GDN:PASTEL5[2],인플루언서:PASTEL5[3],'기타 바이럴':PASTEL5[4],그외:PASTEL5[0]};
+const ADV_TEXT = {SA:PASTEL5_TEXT[0],META:PASTEL5_TEXT[1],GDN:PASTEL5_TEXT[2],인플루언서:PASTEL5_TEXT[3],'기타 바이럴':PASTEL5_TEXT[4],그외:PASTEL5_TEXT[0]};
+const COST_C = PASTEL5;
+const COST_TEXT = PASTEL5_TEXT;
+// 카테고리·채널 분석 외 항목(워터폴 시리즈 등) 구분용 — 채도·명도를 맞춘 별도 팔레트(무지개 원색 아님)
 const PALETTE = ['#3F7A94','#4C6FA5','#6C5FA0','#96569C','#A65575','#A66056','#B37A3E','#9C9440','#6E9C4A','#4F9A6E','#3F9A87'];
-const MEDIA_C = {방송:PALETTE[0],온라인:PALETTE[2],홈쇼핑:PALETTE[4],기타:PALETTE[6]};
-const ADV_C = {SA:PALETTE[0],META:PALETTE[1],GDN:PALETTE[2],인플루언서:PALETTE[3],'기타 바이럴':PALETTE[4],그외:PALETTE[6]};
-const COST_C = PALETTE.slice(0,5);
 const TOSS_PAL = PALETTE;
 
 /* ── 상태 ── */
@@ -458,11 +464,11 @@ function renderPnl(){
   const mData=allM.map(m=>({m,...calcPnl([m])}));
 
   const costItems=[
-    {k:'PPL',v:tot.ppl,c:COST_C[0]},
-    {k:'방송광고',v:tot.광고방송,c:COST_C[1]},
-    {k:'온라인광고',v:tot.광고온라인,c:COST_C[2]},
-    {k:'샘플비',v:tot.샘플,c:COST_C[3]},
-    {k:'기타비용',v:tot.기타,c:COST_C[4]},
+    {k:'PPL',v:tot.ppl,c:COST_C[0],t:COST_TEXT[0]},
+    {k:'방송광고',v:tot.광고방송,c:COST_C[1],t:COST_TEXT[1]},
+    {k:'온라인광고',v:tot.광고온라인,c:COST_C[2],t:COST_TEXT[2]},
+    {k:'샘플비',v:tot.샘플,c:COST_C[3],t:COST_TEXT[3]},
+    {k:'기타비용',v:tot.기타,c:COST_C[4],t:COST_TEXT[4]},
   ].filter(x=>x.v>0);
   const totC=costItems.reduce((a,x)=>a+x.v,0);
 
@@ -558,13 +564,13 @@ function renderPnl(){
   <div class="g3">
     <div class="card"><div class="ct">미디어별 매출</div>
       <div style="position:relative;height:160px;margin-bottom:12px"><canvas id="cDonut" role="img" aria-label="미디어별 매출 도넛"></canvas></div>
-      ${mediaEnt.map(([k,v])=>{const p=totalMediaSales?Math.round(v/totalMediaSales*100):0;const c=MEDIA_C[k]||'#BAB0AC';return`<div class="hb"><span class="hbl">${k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${c}">${p}%</div></div><span class="hba">${WM(v)}</span></div>`;}).join('')}
+      ${mediaEnt.map(([k,v])=>{const p=totalMediaSales?Math.round(v/totalMediaSales*100):0;const c=MEDIA_C[k]||'#BAB0AC';const tc=MEDIA_TEXT[k]||'#33362F';return`<div class="hb"><span class="hbl">${k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${c};color:${tc}">${p}%</div></div><span class="hba">${WM(v)}</span></div>`;}).join('')}
     </div>
     <div class="card"><div class="ct">비용 구성</div>
-      ${costItems.map(x=>{const p=totC?Math.round(x.v/totC*100):0;return`<div class="hb"><span class="hbl">${x.k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${x.c}">${p}%</div></div><span class="hba">${WM(x.v)}</span></div>`;}).join('')}
+      ${costItems.map(x=>{const p=totC?Math.round(x.v/totC*100):0;return`<div class="hb"><span class="hbl">${x.k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${x.c};color:${x.t}">${p}%</div></div><span class="hba">${WM(x.v)}</span></div>`;}).join('')}
     </div>
     <div class="card"><div class="ct">온라인 광고 유형별</div>
-      ${advEnt.length?advEnt.map(([k,v])=>{const p=totalAdv?Math.round(v/totalAdv*100):0;const c=ADV_C[k]||'#BAB0AC';return`<div class="hb"><span class="hbl">${k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${c}">${p}%</div></div><span class="hba">${WM(v)}</span></div>`;}).join(''):'<div style="color:var(--t3);font-size:12px">데이터 없음</div>'}
+      ${advEnt.length?advEnt.map(([k,v])=>{const p=totalAdv?Math.round(v/totalAdv*100):0;const c=ADV_C[k]||'#BAB0AC';const tc=ADV_TEXT[k]||'#33362F';return`<div class="hb"><span class="hbl">${k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${c};color:${tc}">${p}%</div></div><span class="hba">${WM(v)}</span></div>`;}).join(''):'<div style="color:var(--t3);font-size:12px">데이터 없음</div>'}
     </div>
   </div>
   <div class="sec-title">월별 상세</div>
@@ -943,7 +949,7 @@ function renderStatusCat(actM, allM){
       <div style="position:relative;height:160px;margin-bottom:10px">
         <canvas id="cMediaDonut" role="img" aria-label="미디어별 매출 도넛"></canvas>
       </div>
-      ${mediaEnt.map(([k,v])=>{const p=totalMedia?Math.round(v/totalMedia*100):0;const c=MEDIA_C[k]||'#BAB0AC';return`<div class="hb"><span class="hbl">${k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${c}">${p}%</div></div><span class="hba">${WM(v)}</span></div>`;}).join('')}
+      ${mediaEnt.map(([k,v])=>{const p=totalMedia?Math.round(v/totalMedia*100):0;const c=MEDIA_C[k]||'#BAB0AC';const tc=MEDIA_TEXT[k]||'#33362F';return`<div class="hb"><span class="hbl">${k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${c};color:${tc}">${p}%</div></div><span class="hba">${WM(v)}</span></div>`;}).join('')}
     </div>
     <div class="card">
       <div class="ct">온라인 광고비 <span class="ct-note">${d.advOnline?WM(d.advOnline)+' 진행월 기준':'데이터 없음'}</span></div>
@@ -951,7 +957,7 @@ function renderStatusCat(actM, allM){
         const advEnt=Object.entries(d.advTypeMap).filter(([,v])=>v>0).sort((a,b)=>b[1]-a[1]);
         const totalAdv=advEnt.reduce((a,[,v])=>a+v,0);
         return advEnt.length
-          ? advEnt.map(([k,v])=>{const p=totalAdv?Math.round(v/totalAdv*100):0;const c=ADV_C[k]||'#BAB0AC';return`<div class="hb"><span class="hbl">${k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${c}">${p}%</div></div><span class="hba">${WM(v)}</span></div>`;}).join('')
+          ? advEnt.map(([k,v])=>{const p=totalAdv?Math.round(v/totalAdv*100):0;const c=ADV_C[k]||'#BAB0AC';const tc=ADV_TEXT[k]||'#33362F';return`<div class="hb"><span class="hbl">${k}</span><div class="hbt"><div class="hbf" style="width:${p}%;background:${c};color:${tc}">${p}%</div></div><span class="hba">${WM(v)}</span></div>`;}).join('')
           : '<div style="display:flex;flex-direction:column;align-items:center;justify-content:center;height:80px;color:var(--t3)"><div style="font-size:20px;margin-bottom:6px">📭</div><div style="font-size:12px">온라인광고비 데이터 없음</div></div>';
       })()}
     </div>
