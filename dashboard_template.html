@@ -1644,8 +1644,12 @@ function calcBridge(cat){
 
   return {baseMonth, prevMonth, totalBase, totalPrev, diff, common, newG, react, extinct,
     marketVolume:시장물량효과, mix:상품믹스효과, priceEffect:가격효과, newEffect, reactEffect, extinctEffect,
-    bridgeSum, residual, pass, anomalies};
+    bridgeSum, residual, pass, anomalies,
+    Q0_common, Q1_common, sales0_common, avgP0Common:전월공통평균ASP, commonQtyEffect:공통수량효과};
 }
+
+let bridgeShowCalc = false;
+function toggleBridgeCalc(){ bridgeShowCalc=!bridgeShowCalc; renderBridge(); }
 
 function renderBridge(){
   const b = calcBridge(curCat);
@@ -1723,6 +1727,43 @@ function renderBridge(){
   }).sort((x,y)=>y.diff-x.diff);
   const risingLowAsp = mediaRows.filter(x=>x.diff>0.02 && x.mediaASP!=null && overallASP>0 && x.mediaASP<overallASP);
 
+  // 계산 근거 패널 — 가격효과 그룹별 기여도 TOP5(절대값 기준)
+  const priceContribs = b.common.map(x=>({label:x.label, P0:x.P0, P1:x.P1, Q1:x.Q1, contrib:x.Q1*(x.P1-x.P0)}))
+    .sort((x,y)=>Math.abs(y.contrib)-Math.abs(x.contrib)).slice(0,5);
+  const priceContribRows = priceContribs.map(x=>`<div class="pr"><span>${x.label}: 단가 ${W(x.P0)}원→${W(x.P1)}원, 박스 ${W(x.Q1)}개</span><span class="${x.contrib>=0?'pos':'neg'}">${x.contrib>=0?'+':''}${WM(x.contrib)}</span></div>`).join('');
+  const calcPanel = `
+  <div class="card" style="margin-top:12px">
+    <div class="ct" style="cursor:pointer" onclick="toggleBridgeCalc()">계산 근거 보기 <span class="arr" style="display:inline-block;transition:transform .2s;transform:rotate(${bridgeShowCalc?90:0}deg);margin-left:4px">▶</span></div>
+    ${bridgeShowCalc?`
+    <div style="font-size:12px;color:var(--t2);line-height:1.9">
+      <div style="font-weight:700;color:var(--t1);margin:10px 0 4px">[시장물량효과]</div>
+      <div>공통그룹(전월·당월 모두 매출 있는 그룹) 수: <b>${b.common.length}개</b></div>
+      <div>전월 공통그룹 총박스수(Box0_common): <b>${W(b.Q0_common)}박스</b></div>
+      <div>당월 공통그룹 총박스수(Box1_common): <b>${W(b.Q1_common)}박스</b></div>
+      <div>전월 공통그룹 평균단가: 전월 공통그룹 매출합계(${WM(b.sales0_common)}) ÷ Box0_common(${W(b.Q0_common)}) = <b>${WF(b.avgP0Common)}</b></div>
+      <div>시장물량효과 = (Box1_common − Box0_common) × 평균단가 = (${W(b.Q1_common)} − ${W(b.Q0_common)}) × ${WF(b.avgP0Common)} = <b class="${b.marketVolume>=0?'pos':'neg'}">${WM(b.marketVolume)}</b></div>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 4px">[상품믹스효과]</div>
+      <div>공통그룹 수량효과 = Σ(당월박스−전월박스)×전월단가, 그룹별 합산 = <b>${WM(b.commonQtyEffect)}</b></div>
+      <div>상품믹스효과 = 공통그룹 수량효과(${WM(b.commonQtyEffect)}) − 시장물량효과(${WM(b.marketVolume)}) = <b class="${b.mix>=0?'pos':'neg'}">${WM(b.mix)}</b></div>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 4px">[가격효과]</div>
+      <div>가격효과 = Σ 당월박스×(당월단가−전월단가), 그룹별 합산 = <b class="${b.priceEffect>=0?'pos':'neg'}">${WM(b.priceEffect)}</b></div>
+      <div style="margin-top:6px;color:var(--t3);font-size:11px">그룹별 기여도 TOP5(절대값 기준)</div>
+      ${priceContribRows||'<div style="color:var(--t3)">공통그룹 없음</div>'}
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 4px">[신규·재활성·소멸]</div>
+      <div>신규효과 = 신규조합(${b.newG.length}개) 당월매출 합계 = <b class="pos">${WM(b.newEffect)}</b></div>
+      <div>재활성효과 = 재활성조합(${b.react.length}개) 당월매출 합계 = <b class="pos">${WM(b.reactEffect)}</b></div>
+      <div>소멸효과 = 소멸조합(${b.extinct.length}개) 전월매출 합계 = <b class="neg">${WM(b.extinctEffect)}</b> (검증식·워터폴에서는 마이너스로 사용)</div>
+
+      <div style="font-weight:700;color:var(--t1);margin:14px 0 4px">[최종 검증]</div>
+      <div>시장물량(${WM(b.marketVolume)}) + 상품믹스(${WM(b.mix)}) + 가격효과(${WM(b.priceEffect)}) + 신규(${WM(b.newEffect)}) + 재활성(${WM(b.reactEffect)}) − 소멸(${WM(b.extinctEffect)}) = <b>${WM(b.bridgeSum)}</b></div>
+      <div>실제 순증감액(당월매출 − 전월매출) = ${WM(b.totalBase)} − ${WM(b.totalPrev)} = <b>${WM(b.diff)}</b></div>
+      <div>반올림 후 잔차 = ${WM(b.diff)} − ${WM(b.bridgeSum)} = <b>${WF(b.residual)}</b> (허용오차 ±1원) → <b class="${b.pass?'pos':'neg'}">${b.pass?'PASS':'FAIL'}</b></div>
+    </div>`:''}
+  </div>`;
+
   document.getElementById('scrollArea').innerHTML=`
   <div class="sec-title">매출 증감 브리지 · ${b.prevMonth} → ${b.baseMonth}(마감)</div>
   <div style="font-size:11px;color:var(--t3);margin:-8px 0 14px">이 페이지는 생애주기(성장/하락 판정)와는 다른 계산입니다 — 월간 매출 변화 원인 분해 전용입니다.</div>
@@ -1730,7 +1771,7 @@ function renderBridge(){
     <div class="kc"><div class="kl">전월 매출</div><div class="kv">${WM(b.totalPrev)}</div><div class="ks">${b.prevMonth}</div></div>
     <div class="kc"><div class="kl">기준월 매출</div><div class="kv">${WM(b.totalBase)}</div><div class="ks">${b.baseMonth}(마감)</div></div>
     <div class="kc"><div class="kl">증감액</div><div class="kv ${pc}">${WM(b.diff)}</div><div class="ks">전월 대비</div></div>
-    <div class="kc"><div class="kl">증감률</div><div class="kv ${pc}">${PCT(b.totalPrev?b.diff/b.totalPrev:0)}</div><div class="ks">검증 PASS · 잔차 ${b.residual}원</div></div>
+    <div class="kc"><div class="kl">증감률</div><div class="kv ${pc}">${PCT(b.totalPrev?b.diff/b.totalPrev:0)}</div><div class="ks">검증 ${b.pass?'PASS':'FAIL'} · 잔차 ${b.residual}원 · <span style="text-decoration:underline;cursor:pointer" onclick="toggleBridgeCalc()">계산 근거 보기</span></div></div>
   </div>
   <div class="insight"><div class="ins-t">✦ 증감 원인 요약</div><ul class="ins-ul"><li>${bridgeSummary}</li></ul></div>
   <div class="card"><div class="ct">효과별 상세 <span class="ct-note">% 기준 = 전월 매출 대비(직관적 지표) · 작은 글씨는 순증감 대비 참고치</span></div>
@@ -1745,6 +1786,7 @@ function renderBridge(){
       </tbody>
     </table></div>
   </div>
+  ${calcPanel}
   <div class="g2" style="margin-top:12px">
     <div class="card"><div class="ct">신규 조합 <span class="ct-note">${b.newG.length}개 · 합계 ${WM(b.newEffect)}</span></div>
       ${sortedNew.length?sortedNew.map(x=>`<div class="pr"><span>${x.label}</span><span class="pos">${WM(x.sales1)}</span></div>`).join(''):'<div style="color:var(--t3);font-size:12px">없음</div>'}
