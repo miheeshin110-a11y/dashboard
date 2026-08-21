@@ -1206,11 +1206,11 @@ function classifyLifecycle(meta, monthSales, monthBox, months, idx, ledgerFlagge
   if(ledgerFlagged) return {lifecycle:'판정유보', dataState:'원장누락 의심', signals:[], hasSignificant, noSaleStreak};
   if(hasSignificant && noSaleStreak>=2) return {lifecycle:'휴면', dataState:'정상', signals:[], hasSignificant, noSaleStreak};
 
-  const monthsSinceFirst = idx-firstSaleIdx;
-  if(monthsSinceFirst<=2) return {lifecycle:'신규', dataState:'정상', signals:[], hasSignificant, noSaleStreak};
-
+  // v5/v6 원안은 "신규"(최초판매 3개월 이내)와 "판정유보·관측기간부족"(6개월 미만)을
+  // 분리했으나, 사용자 확인 후 예외 적용: 원장누락은 이미 위에서 먼저 걸러지므로
+  // 이 시점에 관측기간이 짧은 이유는 항상 "최근 런칭"뿐 — 6개월 미만 전체를 "신규"로 통합.
   const availableSpan = idx-firstSaleIdx+1;
-  if(availableSpan<6) return {lifecycle:'판정유보', dataState:'관측기간 부족', signals:[], hasSignificant, noSaleStreak};
+  if(availableSpan<6) return {lifecycle:'신규', dataState:'정상', signals:[], hasSignificant, noSaleStreak};
 
   const avg=(s,e)=>{ let sum=0; for(let i=s;i<=e;i++) sum+=monthSales[i]; return sum/(e-s+1); };
   const recent3=avg(idx-2,idx), prior3=avg(idx-5,idx-3);
